@@ -25,16 +25,16 @@ ENEMY_TYPES = {
         "xp_value": 35, "status_on_hit": "poison",
     },
     "mini_boss": {
-        "hp": 300, "speed": 1.5, "size": 56,
-        "damage": 20, "shoot_range": 350,
-        "shoot_cooldown": 1000, "bullet_damage": 14,
-        "xp_value": 150, "status_on_hit": "fire",
+        "hp": 800, "speed": 1.5, "size": 56,
+        "damage": 25, "shoot_range": 350,
+        "shoot_cooldown": 900, "bullet_damage": 16,
+        "xp_value": 200, "status_on_hit": "fire",
     },
     "big_boss": {
-        "hp": 800, "speed": 1.2, "size": 72,
-        "damage": 30, "shoot_range": 400,
-        "shoot_cooldown": 700, "bullet_damage": 20,
-        "xp_value": 500, "status_on_hit": "bleed",
+        "hp": 2500, "speed": 1.2, "size": 72,
+        "damage": 40, "shoot_range": 400,
+        "shoot_cooldown": 600, "bullet_damage": 25,
+        "xp_value": 800, "status_on_hit": "bleed",
     },
 }
 
@@ -90,6 +90,8 @@ class Enemy:
         # Animation
         self.anim_offset = random.uniform(0, math.tau)
         self.gun_flash_timer = 0
+        self.spawn_time = 0  # set by game when spawned
+        self.spawn_duration = 400  # ms to scale in
 
     @property
     def rect(self) -> pygame.Rect:
@@ -147,7 +149,7 @@ class Enemy:
             self.face_x = dx / dist
             self.face_y = dy / dist
 
-        if dist < self.aggro_range and dist > 0:
+        if dist > 0:
             if self.shoot_range > 0 and dist < self.shoot_range and dist > self.attack_range:
                 # Strafe while shooting
                 strafe = math.sin(now * 0.002 + self.anim_offset) * effective_speed * 0.4
@@ -160,14 +162,6 @@ class Enemy:
             else:
                 self.x += (dx / dist) * effective_speed
                 self.y += (dy / dist) * effective_speed
-        else:
-            if now - self.wander_timer > 2000:
-                angle = random.uniform(0, math.tau)
-                self.wander_dx = math.cos(angle) * effective_speed * 0.5
-                self.wander_dy = math.sin(angle) * effective_speed * 0.5
-                self.wander_timer = now
-            self.x += self.wander_dx
-            self.y += self.wander_dy
 
         half = self.size // 2
         self.x = max(half, min(world_w - half, self.x))
@@ -190,6 +184,33 @@ class Enemy:
         sy = int(self.y - camera_y)
         now = pygame.time.get_ticks()
 
+        # Spawn-in scale animation
+        spawn_t = 1.0
+        if self.spawn_time > 0:
+            elapsed = now - self.spawn_time
+            if elapsed < self.spawn_duration:
+                spawn_t = elapsed / self.spawn_duration
+                # Ease-out bounce
+                spawn_t = 1.0 - (1.0 - spawn_t) ** 2
+
+        if spawn_t < 1.0:
+            # Draw scaled version using a temp surface
+            margin = 20
+            w = self.size + margin * 2
+            h = self.size + margin * 2 + 30  # extra for labels/bars
+            temp = pygame.Surface((w, h), pygame.SRCALPHA)
+            local_sx = w // 2
+            local_sy = h // 2
+            self._draw_dispatch(temp, local_sx, local_sy, now)
+            # Scale
+            sw = max(1, int(w * spawn_t))
+            sh = max(1, int(h * spawn_t))
+            scaled = pygame.transform.scale(temp, (sw, sh))
+            surface.blit(scaled, (sx - sw // 2, sy - sh // 2))
+        else:
+            self._draw_dispatch(surface, sx, sy, now)
+
+    def _draw_dispatch(self, surface: pygame.Surface, sx: int, sy: int, now: int):
         if self.enemy_type == "dalek":
             self._draw_dalek(surface, sx, sy, now)
         elif self.enemy_type == "wraith":

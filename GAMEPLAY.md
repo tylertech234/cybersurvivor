@@ -20,9 +20,9 @@ A complete guide to everything in the game — classes, weapons, enemies, mechan
 
 You pick one of three classes at the start. Each has different stats, starting weapons, and built-in passive abilities.
 
-### Cyber Knight
+### Knight
 
-A tank who fights up close with melee weapons and shrugs off damage.
+Heavy armor, devastating melee. Born to fight up close.
 
 - **+30 HP**, **+5 Damage**
 - **Starting Weapon:** Sword
@@ -30,19 +30,19 @@ A tank who fights up close with melee weapons and shrugs off damage.
   - *Melee Lifesteal* — Recover 5 HP every time you kill an enemy with a melee weapon
   - *Armor Plating* — Take 20% less damage from all sources
 
-### Cyber Archer
+### Archer
 
-A fast, fragile ranged attacker who crits often and dodges incoming hits.
+Fast and deadly at range. Keep your distance.
 
 - **+1.0 Speed**, **-10 HP**
-- **Starting Weapon:** Throwing Daggers
+- **Starting Weapon:** Throwing Dagger
 - **Passives:**
   - *Crit Shots* — 20% chance to deal double damage with projectiles
   - *Evasion* — 15% chance to completely dodge any incoming attack
 
-### Cyber Jester
+### Jester
 
-A chaotic wildcard with moderate speed, explosive kills, and lucky damage spikes.
+Chaos incarnate. Funny weapons, unpredictable power.
 
 - **+0.5 Speed**
 - **Starting Weapon:** Rubber Chicken
@@ -131,9 +131,9 @@ Key details:
 ## Enemies
 
 ### Dalek
-- **HP:** 40 | **Speed:** 2.5 | **Melee Damage:** 10 | **XP:** 25
-- Shoots cyan bullets (15 damage, every 900ms)
-- Engages at 200px range
+- **HP:** 70 | **Speed:** 2.4 | **Melee Damage:** 12 | **XP:** 25
+- Shoots cyan bullets (8 damage, every 1200ms)
+- Engages at 320px range
 
 ### Wraith
 - **HP:** 45 | **Speed:** 3.2 | **Melee Damage:** 14 | **XP:** 35
@@ -186,7 +186,7 @@ The game is an endless wave survival. Each wave spawns a group of enemies you mu
 A separate difficulty system that scales over time:
 
 - Enemies deal and take scaled damage based on darkness
-- You earn **more XP** as darkness increases (+50% per darkness level)
+- You earn **more XP** as darkness increases (up to +200% at max darkness)
 - The screen gets progressively darker
 
 ---
@@ -214,8 +214,8 @@ Some trees on the map bear fruit (roughly 10% of all trees). Hit them with a mel
 
 Press **Shift** or **K** to dash in your current movement direction.
 
-- **Duration:** 200ms of fast movement
-- **Cooldown:** 600ms between dashes
+- **Duration:** 150ms of fast movement
+- **Cooldown:** 800ms between dashes
 - **Invincibility:** You are invincible for 300ms during and after the dash
 - Great for escaping boss attacks or dodging into melee range
 
@@ -245,12 +245,12 @@ Killing a boss spawns a glowing chest. Walk into it to open a reward screen with
 
 | Upgrade | Effect |
 |---------|--------|
-| Sharpened Edge | +10 Damage |
-| Extended Reach | +15 Range |
-| Quick Hands | -80ms Attack Cooldown |
-| Reinforced Armor | +40 Max HP (+ instant heal) |
-| Full Repair | Fully heals you |
-| Servo Boost | +0.8 Speed |
+| Overclocked Blade | +15 Damage |
+| Extended Reach | +20 Range |
+| Turbo Hands | -100ms Attack Cooldown |
+| Reinforced Chassis | +60 Max HP (+ instant heal) |
+| Emergency Repair | Fully heals you |
+| Overdrive | +1.0 Speed |
 
 ### Passive Abilities
 - **Nano Regen** — Regenerate 1 HP every 2 seconds
@@ -272,10 +272,10 @@ You gain XP from killing enemies. When you level up, you're offered a choice of 
 
 ### Stat Upgrades
 - **Power Surge** — +8 Damage
-- **Fortify** — +25 Max HP (+ instant heal)
-- **Quicken** — +0.5 Speed
-- **Long Arms** — +12 Range
-- **Rapid Strike** — -60ms Attack Cooldown
+- **Iron Skin** — +25 Max HP (+ instant heal)
+- **Leg Servos** — +0.5 Speed
+- **Quick Trigger** — -60ms Attack Cooldown
+- **Full Repair** — Fully heals you
 - **Glass Cannon** — +30% Damage but lose 20 Max HP (risky!)
 
 ### Passive Abilities (from level-ups)
@@ -315,7 +315,7 @@ The heads-up display shows:
 - **Dash through danger.** You're invincible during a dash. Use it to escape boss swings or close the gap on ranged enemies.
 - **Orbiters are passive damage.** Blade Barrier / Banana-Rang orbit you and keep hitting nearby enemies while you focus on other threats.
 - **Boss bullets are the real threat.** Bosses are slow. Kite them and parry their shots, or dash through the bullets.
-- **Pick Quick Hands from chests if offered.** Reducing attack cooldown makes every weapon better and gives you more parry opportunities.
+- **Pick Turbo Hands from chests if offered.** Reducing attack cooldown makes every weapon better and gives you more parry opportunities.
 - **The Cyber Bow pierces.** Arrows go through enemies, so line them up for multi-kills.
 - **Chain Lightning is amazing for crowds.** Each hit arcs to 2 nearby enemies — combine with fast weapons for constant chain procs.
 - **Second Wind is your insurance policy.** It revives you once per run. Take it early if you're pushing deep.

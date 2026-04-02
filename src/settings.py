@@ -27,16 +27,16 @@ PLAYER_DASH_DURATION = 150          # ms
 PLAYER_DASH_COOLDOWN = 800          # ms
 
 # -- Enemies --
-ENEMY_SPEED = 2
-ENEMY_HP = 60
+ENEMY_SPEED = 2.4
+ENEMY_HP = 70
 ENEMY_SIZE = 36
 ENEMY_COLOR = RED
-ENEMY_DAMAGE = 10
-ENEMY_ATTACK_COOLDOWN = 1000        # ms
-ENEMY_AGGRO_RANGE = 250
+ENEMY_DAMAGE = 12
+ENEMY_ATTACK_COOLDOWN = 800         # ms
+ENEMY_AGGRO_RANGE = 350
 ENEMY_ATTACK_RANGE = 45
-ENEMY_SHOOT_RANGE = 300             # px – Daleks prefer ranged
-ENEMY_SHOOT_COOLDOWN = 1500         # ms
+ENEMY_SHOOT_RANGE = 320             # px – Daleks prefer ranged
+ENEMY_SHOOT_COOLDOWN = 1200         # ms
 ENEMY_BULLET_SPEED = 4
 ENEMY_BULLET_DAMAGE = 8
 ENEMY_BULLET_SIZE = 8
@@ -47,8 +47,8 @@ ENEMY_EYE_COLOR = (0, 200, 255)     # Dalek eyestalk glow
 ENEMY_SKIRT_COLOR = (90, 82, 74)    # Dalek skirt
 
 # -- Spawning --
-WAVE_BASE_COUNT = 5
-WAVE_GROWTH = 3
+WAVE_BASE_COUNT = 8
+WAVE_GROWTH = 5
 SPAWN_MARGIN = 80                   # px from screen edge
 
 # -- XP / Leveling --

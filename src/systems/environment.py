@@ -8,14 +8,17 @@ class Prop:
     """A decorative/collidable environment object."""
 
     # Collision radii per kind (0 = no collision)
-    COLLISION_RADIUS = {"tree": 10, "rock": 14, "bush": 0, "stump": 0}
+    COLLISION_RADIUS = {"tree": 10, "rock": 14, "bush": 0, "stump": 0, "fruit_tree": 10}
 
     def __init__(self, x: float, y: float, kind: str):
         self.x = x
         self.y = y
-        self.kind = kind  # "tree", "rock", "bush", "stump"
+        self.kind = kind  # "tree", "rock", "bush", "stump", "fruit_tree"
         self.anim_offset = random.uniform(0, math.tau)
         self.collision_r = self.COLLISION_RADIUS.get(kind, 0)
+        # Fruit tree state
+        self.has_fruit = kind == "fruit_tree"
+        self.fruit_respawn_time = 0  # timestamp when fruit can regrow
 
     def draw(self, surface: pygame.Surface, camera_x: int, camera_y: int):
         sx = int(self.x - camera_x)
@@ -24,6 +27,8 @@ class Prop:
 
         if self.kind == "tree":
             self._draw_tree(surface, sx, sy, now)
+        elif self.kind == "fruit_tree":
+            self._draw_fruit_tree(surface, sx, sy, now)
         elif self.kind == "rock":
             self._draw_rock(surface, sx, sy)
         elif self.kind == "bush":
@@ -41,6 +46,25 @@ class Prop:
         pygame.draw.circle(surface, (25, 90, 25), (int(sx + sway + 5), sy - 26), 11)
         # Highlight
         pygame.draw.circle(surface, (45, 120, 40), (int(sx + sway - 2), sy - 26), 6)
+
+    def _draw_fruit_tree(self, surface, sx, sy, now):
+        sway = math.sin(now * 0.001 + self.anim_offset) * 2
+        # Trunk — slightly warmer brown
+        pygame.draw.rect(surface, (100, 65, 35), (sx - 4, sy - 10, 8, 24))
+        # Canopy — lighter, more lush green
+        pygame.draw.circle(surface, (25, 100, 25), (int(sx + sway), sy - 22), 18)
+        pygame.draw.circle(surface, (40, 120, 35), (int(sx + sway - 4), sy - 18), 13)
+        pygame.draw.circle(surface, (35, 110, 30), (int(sx + sway + 5), sy - 26), 11)
+        pygame.draw.circle(surface, (55, 140, 45), (int(sx + sway - 2), sy - 26), 6)
+        # Draw apples if the tree has fruit
+        if self.has_fruit:
+            swi = int(sx + sway)
+            pygame.draw.circle(surface, (220, 40, 30), (swi - 8, sy - 14), 4)
+            pygame.draw.circle(surface, (220, 40, 30), (swi + 6, sy - 18), 4)
+            pygame.draw.circle(surface, (220, 40, 30), (swi - 2, sy - 28), 3)
+            # Tiny stems
+            pygame.draw.line(surface, (80, 50, 20), (swi - 8, sy - 18), (swi - 8, sy - 14), 1)
+            pygame.draw.line(surface, (80, 50, 20), (swi + 6, sy - 22), (swi + 6, sy - 18), 1)
 
     def _draw_rock(self, surface, sx, sy):
         # Irregular rock shape using polygon
@@ -101,6 +125,9 @@ class EnvironmentSystem:
             if math.hypot(x - center_x, y - center_y) < 200:
                 continue
             kind = random.choice(kinds)
+            # ~1 in 10 trees become fruit trees
+            if kind == "tree" and random.random() < 0.10:
+                kind = "fruit_tree"
             self.props.append(Prop(x, y, kind))
         random.seed()  # re-randomize
 
@@ -127,3 +154,24 @@ class EnvironmentSystem:
                 ex += (dx / dist) * overlap
                 ey += (dy / dist) * overlap
         return ex, ey
+
+    def check_fruit_tree_hit(self, attack_rect: pygame.Rect, now: int) -> list[tuple[float, float]]:
+        """Check if an attack rect hits any fruit trees. Returns apple drop positions."""
+        drops = []
+        respawn_delay = 30000  # 30 seconds for fruit to regrow
+        for p in self.props:
+            if p.kind != "fruit_tree" or not p.has_fruit:
+                continue
+            tree_rect = pygame.Rect(p.x - 18, p.y - 30, 36, 40)
+            if attack_rect.colliderect(tree_rect):
+                p.has_fruit = False
+                p.fruit_respawn_time = now + respawn_delay
+                drops.append((p.x, p.y + 10))
+        return drops
+
+    def update_fruit(self, now: int):
+        """Regrow fruit on trees whose timer has expired."""
+        for p in self.props:
+            if p.kind == "fruit_tree" and not p.has_fruit:
+                if now >= p.fruit_respawn_time:
+                    p.has_fruit = True

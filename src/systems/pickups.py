@@ -78,9 +78,24 @@ class PickupSystem:
             upgrade = random.choice(UPGRADE_TYPES)
             self.pickups.append(Pickup(x, y, upgrade))
 
+    def spawn_apple(self, x: float, y: float):
+        """Drop a healing apple from a fruit tree."""
+        apple = {"name": "Apple", "color": (220, 40, 30), "icon": "a", "effect": "apple"}
+        self.pickups.append(Pickup(x, y, apple))
+
     def update(self, now: int, player):
+        magnet = "magnetic_field" in getattr(player, 'passives', [])
         for p in self.pickups:
             p.update(now)
+            # Magnetic field: pickups fly toward player
+            if magnet and p.alive:
+                dx = player.x - p.x
+                dy = player.y - p.y
+                dist = math.hypot(dx, dy)
+                if 0 < dist < 150:
+                    pull = min(3.0, 150 / max(dist, 1))
+                    p.x += (dx / dist) * pull
+                    p.y += (dy / dist) * pull
             if p.alive and p.rect.colliderect(player.rect):
                 self._apply_upgrade(player, p.upgrade, now)
                 p.alive = False
@@ -92,6 +107,8 @@ class PickupSystem:
         effect = upgrade["effect"]
         if effect == "heal":
             player.hp = min(player.max_hp, player.hp + 30)
+        elif effect == "apple":
+            player.hp = min(player.max_hp, player.hp + 20)
         elif effect == "damage":
             player.damage += 5
         elif effect == "speed":

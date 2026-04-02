@@ -4,14 +4,27 @@ from src.settings import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW, BLACK
 from src.systems.weapons import WEAPONS
 
 
-# Stat upgrades offered at level up (non-weapon)
-STAT_UPGRADES = [
-    {"name": "+20 Max HP",     "icon": "H", "color": (220, 50, 220),  "effect": "max_hp",  "value": 20},
-    {"name": "+5 Damage",      "icon": "D", "color": (255, 80, 60),   "effect": "damage",  "value": 5},
-    {"name": "+0.5 Speed",     "icon": "S", "color": (80, 180, 255),  "effect": "speed",   "value": 0.5},
-    {"name": "+10 Range",      "icon": "R", "color": (255, 200, 50),  "effect": "range",   "value": 10},
-    {"name": "Full Heal",      "icon": "+", "color": (50, 220, 50),   "effect": "heal",    "value": 0},
-    {"name": "-50ms Cooldown", "icon": "C", "color": (180, 140, 255), "effect": "cooldown", "value": 50},
+# Interesting upgrades — a mix of stats, powerful passives, and risky gambles
+LEVEL_UPGRADES = [
+    # Stat upgrades
+    {"name": "Iron Skin",       "icon": "H", "color": (180, 180, 200), "effect": "max_hp",       "value": 25,  "desc": "+25 Max HP and instant heal"},
+    {"name": "Power Surge",     "icon": "D", "color": (255, 80, 60),   "effect": "damage",       "value": 8,   "desc": "+8 base damage"},
+    {"name": "Quick Trigger",   "icon": "C", "color": (180, 140, 255), "effect": "cooldown",     "value": 60,  "desc": "-60ms attack cooldown"},
+    {"name": "Full Repair",     "icon": "+", "color": (50, 220, 50),   "effect": "heal",         "value": 0,   "desc": "Restore all HP"},
+    {"name": "Leg Servos",      "icon": "S", "color": (80, 180, 255),  "effect": "speed",        "value": 0.5, "desc": "+0.5 movement speed"},
+    # Risky / high-impact
+    {"name": "Glass Cannon",    "icon": "G", "color": (255, 50, 50),   "effect": "glass_cannon", "value": 0,   "desc": "+30% damage but lose 20 Max HP"},
+    # Passive abilities
+    {"name": "Vampiric Strike", "icon": "V", "color": (200, 0, 80),    "effect": "passive", "value": "vampiric_strike", "desc": "Heal 3 HP on each hit"},
+    {"name": "Chain Lightning", "icon": "Z", "color": (100, 200, 255), "effect": "passive", "value": "chain_lightning", "desc": "Hits arc to 2 nearby enemies"},
+    {"name": "Thorns",          "icon": "T", "color": (180, 100, 50),  "effect": "passive", "value": "thorns",          "desc": "Reflect 30% melee damage taken"},
+    {"name": "Second Wind",     "icon": "L", "color": (255, 100, 100), "effect": "passive", "value": "second_wind",     "desc": "Revive once at 30% HP on death"},
+    {"name": "Nano Regen",      "icon": "N", "color": (100, 255, 100), "effect": "passive", "value": "nano_regen",      "desc": "Regenerate 1 HP every 2 seconds"},
+    {"name": "Berserker",       "icon": "B", "color": (255, 60, 60),   "effect": "passive", "value": "berserker",       "desc": "+50% damage when below 30% HP"},
+    {"name": "Shield Matrix",   "icon": "M", "color": (100, 150, 255), "effect": "passive", "value": "shield_matrix",   "desc": "Block one hit every 10 seconds"},
+    {"name": "Explosive Kills", "icon": "E", "color": (255, 150, 0),   "effect": "passive", "value": "explosive_kills", "desc": "25% chance for enemies to explode on death"},
+    {"name": "Magnetic Field",  "icon": "F", "color": (150, 150, 255), "effect": "passive", "value": "magnetic_field",  "desc": "Pickups fly to you from further away"},
+    {"name": "Adrenaline Rush", "icon": "A", "color": (0, 255, 100),   "effect": "passive", "value": "adrenaline",      "desc": "+30% speed for 3s after each kill"},
 ]
 
 
@@ -26,19 +39,26 @@ class LevelUpScreen:
         self.font = pygame.font.SysFont("consolas", 18)
         self.font_small = pygame.font.SysFont("consolas", 14)
 
-    def activate(self, player_weapon_name: str):
-        """Generate 3 random choices: mix of stat upgrades and weapon swaps."""
+    def activate(self, player_weapon_name: str, player_class: str = "knight",
+                 player_passives: list = None):
+        """Generate 3 random choices: mix of stat upgrades, passives, and weapon swaps."""
         self.active = True
         self.selected = 0
+        owned = set(player_passives or [])
         pool = []
 
-        # Add stat upgrades
-        stats = random.sample(STAT_UPGRADES, min(4, len(STAT_UPGRADES)))
-        for s in stats:
-            pool.append({"type": "stat", **s})
+        # Add stat + passive upgrades (filter out already-owned passives)
+        for u in LEVEL_UPGRADES:
+            if u["effect"] == "passive" and u["value"] in owned:
+                continue
+            if u["effect"] == "glass_cannon" and "glass_cannon" in owned:
+                continue
+            pool.append({"type": "stat", **u})
 
-        # Add 1-2 weapon options (weapons the player doesn't currently have)
-        available_weapons = [k for k in WEAPONS if k != player_weapon_name]
+        # Add 1-2 weapon options (class-appropriate weapons the player doesn't currently have)
+        available_weapons = [k for k in WEAPONS
+                           if k != player_weapon_name
+                           and WEAPONS[k].get("class") == player_class]
         if available_weapons:
             wpn_picks = random.sample(available_weapons, min(2, len(available_weapons)))
             for wk in wpn_picks:

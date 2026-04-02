@@ -14,10 +14,13 @@ class HUD:
         self.font_small = pygame.font.SysFont("consolas", 14)
 
     def draw(self, surface: pygame.Surface, player, wave: int, enemy_count: int,
-             darkness: float = 0.0, boss_wave: bool = False):
+             darkness: float = 0.0, boss_wave: bool = False, boss_enemies: list = None):
         self._draw_hp_bar(surface, player)
         self._draw_xp_bar(surface, player)
         self._draw_info(surface, player, wave, enemy_count, darkness, boss_wave)
+        if boss_wave and boss_enemies:
+            self._draw_boss_hp_bar(surface, boss_enemies)
+        self._draw_low_hp_vignette(surface, player)
 
     def _draw_hp_bar(self, surface: pygame.Surface, player):
         bar_x, bar_y = 20, 20
@@ -70,16 +73,69 @@ class HUD:
                 f"Darkness {dark_pct}%  |  XP x{xp_mult:.1f}", True, (r, g, b))
             surface.blit(info, (SCREEN_WIDTH - info.get_width() - 20, 46))
 
-    def draw_game_over(self, surface: pygame.Surface, wave: int, level: int):
+    def _draw_boss_hp_bar(self, surface: pygame.Surface, boss_enemies: list):
+        """Draw a large HP bar at top-center for each boss."""
+        bar_w = 400
+        bar_h = 20
+        bar_x = SCREEN_WIDTH // 2 - bar_w // 2
+        bar_y = 80
+        for i, boss in enumerate(boss_enemies):
+            if not boss.alive:
+                continue
+            y = bar_y + i * (bar_h + 8)
+            ratio = max(0, boss.hp / boss.max_hp)
+            # Label
+            label = "BOSS" if boss.enemy_type == "big_boss" else "ELITE"
+            name_surf = self.font_small.render(f"{label}  {boss.hp}/{boss.max_hp}", True, WHITE)
+            surface.blit(name_surf, (bar_x, y - 16))
+            # Background
+            pygame.draw.rect(surface, (60, 0, 0), (bar_x, y, bar_w, bar_h))
+            # HP fill
+            color = (255, 50, 50) if boss.enemy_type == "big_boss" else (255, 160, 0)
+            pygame.draw.rect(surface, color, (bar_x, y, int(bar_w * ratio), bar_h))
+            # Border
+            pygame.draw.rect(surface, WHITE, (bar_x, y, bar_w, bar_h), 2)
+
+    def _draw_low_hp_vignette(self, surface: pygame.Surface, player):
+        """Draw red screen edges when player HP is below 20%."""
+        if player.hp <= 0 or player.max_hp <= 0:
+            return
+        ratio = player.hp / player.max_hp
+        if ratio >= 0.2:
+            return
+        # Intensity: 0.0 at 20%, 1.0 at 0%
+        intensity = 1.0 - (ratio / 0.2)
+        alpha = int(60 + 100 * intensity)
+        vignette = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        # Draw red gradient borders
+        edge = int(60 + 40 * intensity)
+        for i in range(edge):
+            a = int(alpha * (1.0 - i / edge))
+            # Top
+            pygame.draw.line(vignette, (180, 0, 0, a), (0, i), (SCREEN_WIDTH, i))
+            # Bottom
+            pygame.draw.line(vignette, (180, 0, 0, a), (0, SCREEN_HEIGHT - 1 - i), (SCREEN_WIDTH, SCREEN_HEIGHT - 1 - i))
+            # Left
+            pygame.draw.line(vignette, (180, 0, 0, a), (i, 0), (i, SCREEN_HEIGHT))
+            # Right
+            pygame.draw.line(vignette, (180, 0, 0, a), (SCREEN_WIDTH - 1 - i, 0), (SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT))
+        surface.blit(vignette, (0, 0))
+
+    def draw_game_over(self, surface: pygame.Surface, wave: int, level: int,
+                       kills: int = 0, legacy_points: int = 0):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         surface.blit(overlay, (0, 0))
 
         title = self.font_big.render("YOU DIED", True, RED)
-        surface.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, SCREEN_HEIGHT // 2 - 60))
+        surface.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, SCREEN_HEIGHT // 2 - 80))
 
-        info = self.font.render(f"Reached Wave {wave}  |  Level {level}", True, WHITE)
-        surface.blit(info, (SCREEN_WIDTH // 2 - info.get_width() // 2, SCREEN_HEIGHT // 2))
+        info = self.font.render(f"Reached Wave {wave}  |  Level {level}  |  {kills} Kills", True, WHITE)
+        surface.blit(info, (SCREEN_WIDTH // 2 - info.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
 
-        hint = self.font.render("Press R to restart  |  ESC to quit", True, LIGHT_GRAY)
-        surface.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT // 2 + 40))
+        if legacy_points > 0:
+            lp = self.font.render(f"+{legacy_points} Legacy Points", True, YELLOW)
+            surface.blit(lp, (SCREEN_WIDTH // 2 - lp.get_width() // 2, SCREEN_HEIGHT // 2 + 15))
+
+        hint = self.font.render("Press R for Legacy Shop  |  ESC to quit", True, LIGHT_GRAY)
+        surface.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT // 2 + 55))

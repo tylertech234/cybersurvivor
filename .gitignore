@@ -5,3 +5,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# Runtime-generated files
+.cache/
+game.log
+legacy_save.json
+settings_save.json
+_patch_features.py

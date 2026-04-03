@@ -3,6 +3,7 @@ import math
 import random
 from src.settings import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW
 from src.systems.weapons import WEAPONS
+from src.ui.tooltip import Tooltip
 
 
 # Big upgrades that can come from boss chests
@@ -84,22 +85,36 @@ class BossChest:
 
 
 class ChestRewardScreen:
-    """Shows the upgrades from opening a boss chest."""
+    """Dramatic chest opening — rolls 1-5 upgrades with scaling fanfare."""
 
     def __init__(self):
         self.active = False
         self.rewards: list[dict] = []
-        self.selected = 0
         self.font_big = pygame.font.SysFont("consolas", 28, bold=True)
         self.font = pygame.font.SysFont("consolas", 18)
         self.font_small = pygame.font.SysFont("consolas", 14)
+        self.font_icon = pygame.font.SysFont("consolas", 22, bold=True)
+        self.font_huge = pygame.font.SysFont("consolas", 48, bold=True)
         self.open_time = 0
+        self.phase = "idle"  # buildup | revealing | revealed
+        self._sound_manager = None
+        self._tooltip = Tooltip()
+        self._reveal_index = 0
+        self._reveal_time = 0
+        self._buildup_duration = 1500  # ms of anticipation
+        self._reveal_interval = 400   # ms between each reward reveal
+        self._jackpot = False  # 5 items = jackpot
+        self._particles: list[dict] = []
+        self._player_class = "knight"
 
-    def open_chest(self, player_class: str, player_passives: list = None):
-        """Generate 3-5 random upgrades from a boss chest."""
+    def open_chest(self, player_class: str, player_passives: list = None, sounds=None):
+        """Roll 1-5 random upgrades and start the chest opening sequence."""
         self.active = True
         self.open_time = pygame.time.get_ticks()
-        count = random.randint(3, 5)
+        self._sound_manager = sounds
+        self._player_class = player_class
+        if sounds:
+            sounds.play("chest_open")
 
         owned = set(player_passives or [])
         pool = []
@@ -108,114 +123,268 @@ class ChestRewardScreen:
                 continue
             pool.append(dict(u))
 
-        # Also offer a class-appropriate weapon upgrade
-        class_weapons = [k for k, v in WEAPONS.items()
-                        if v.get("class") == player_class]
-        for wk in class_weapons:
-            w = WEAPONS[wk]
-            pool.append({
-                "name": w["name"],
-                "icon": "W",
-                "color": w["blade_color"],
-                "effect": "weapon",
-                "value": wk,
-            })
+        # Roll 1-5 rewards (weighted: 1=30%, 2=30%, 3=25%, 4=10%, 5=5%)
+        roll = random.random()
+        if roll < 0.30:
+            count = 1
+        elif roll < 0.60:
+            count = 2
+        elif roll < 0.85:
+            count = 3
+        elif roll < 0.95:
+            count = 4
+        else:
+            count = 5
 
-        self.rewards = random.sample(pool, min(count, len(pool)))
-        self.selected = 0
+        self._jackpot = count >= 5
+        count = min(count, len(pool))
+        self.rewards = random.sample(pool, count)
+        self._reveal_index = 0
+        self.phase = "buildup"
+        self._particles = []
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """Returns True when player dismisses the screen (after choosing)."""
         if not self.active:
             return False
-        if event.type == pygame.KEYDOWN:
-            # Number keys to pick a specific reward
-            num_keys = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5]
-            for i, k in enumerate(num_keys):
-                if event.key == k and i < len(self.rewards):
-                    self.selected = i
-                    self.active = False
-                    return True
-            # Arrow / WASD navigation
-            if event.key in (pygame.K_w, pygame.K_UP):
-                self.selected = (self.selected - 1) % len(self.rewards)
-            elif event.key in (pygame.K_s, pygame.K_DOWN):
-                self.selected = (self.selected + 1) % len(self.rewards)
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+        confirm = False
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            confirm = True
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_e):
+            confirm = True
+        if confirm:
+            if self.phase == "buildup":
+                self.phase = "revealing"
+                self._reveal_index = 0
+                self._reveal_time = pygame.time.get_ticks()
+            elif self.phase == "revealing":
+                self._reveal_index = len(self.rewards)
+                self.phase = "revealed"
+                self._reveal_time = pygame.time.get_ticks()
+                if self._jackpot:
+                    self._spawn_explosion()
+                if self._sound_manager:
+                    self._sound_manager.play("wheel_stop")
+            elif self.phase == "revealed":
                 self.active = False
                 return True
         return False
 
     def get_rewards(self) -> list[dict]:
-        """Return only the selected reward."""
-        if 0 <= self.selected < len(self.rewards):
-            return [self.rewards[self.selected]]
-        return self.rewards
+        return list(self.rewards)
+
+    def _spawn_explosion(self):
+        """Spawn particles for jackpot (5-item roll)."""
+        cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+        for _ in range(80):
+            angle = random.uniform(0, math.pi * 2)
+            speed = random.uniform(2, 10)
+            self._particles.append({
+                "x": float(cx), "y": float(cy),
+                "vx": math.cos(angle) * speed,
+                "vy": math.sin(angle) * speed,
+                "life": random.uniform(0.5, 1.5),
+                "age": 0.0,
+                "color": random.choice([
+                    (255, 220, 50), (255, 180, 30), (255, 255, 150),
+                    (255, 100, 50), (255, 255, 255),
+                ]),
+                "size": random.randint(2, 5),
+            })
+
+    def _update_particles(self, dt_s: float):
+        alive = []
+        for p in self._particles:
+            p["age"] += dt_s
+            if p["age"] < p["life"]:
+                p["x"] += p["vx"]
+                p["y"] += p["vy"]
+                p["vy"] += 5 * dt_s  # gravity
+                alive.append(p)
+        self._particles = alive
 
     def draw(self, surface: pygame.Surface):
         if not self.active:
             return
         now = pygame.time.get_ticks()
+        elapsed = now - self.open_time
+
+        # Update phase transitions
+        if self.phase == "buildup" and elapsed >= self._buildup_duration:
+            self.phase = "revealing"
+            self._reveal_index = 0
+            self._reveal_time = now
+
+        if self.phase == "revealing":
+            reveal_elapsed = now - self._reveal_time
+            items_to_show = min(len(self.rewards),
+                                reveal_elapsed // self._reveal_interval + 1)
+            if items_to_show > self._reveal_index:
+                self._reveal_index = items_to_show
+                if self._sound_manager:
+                    self._sound_manager.play("wheel_tick")
+            if self._reveal_index >= len(self.rewards):
+                if self.phase != "revealed":
+                    self.phase = "revealed"
+                    self._reveal_time = now
+                    if self._jackpot:
+                        self._spawn_explosion()
+                    if self._sound_manager:
+                        snd = "boss_roar" if self._jackpot else "wheel_stop"
+                        self._sound_manager.play(snd)
+
+        # Particle update
+        self._update_particles(1 / 60)
 
         # Darken background
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 200))
+        overlay.fill((0, 0, 0, 210))
         surface.blit(overlay, (0, 0))
 
+        cx = SCREEN_WIDTH // 2
+        cy = SCREEN_HEIGHT // 2
+
+        if self.phase == "buildup":
+            self._draw_buildup(surface, cx, cy, now, elapsed)
+        else:
+            self._draw_rewards(surface, cx, cy, now)
+
+        # Draw particles
+        for p in self._particles:
+            alpha = max(0, int(255 * (1 - p["age"] / p["life"])))
+            ps = pygame.Surface((p["size"] * 2, p["size"] * 2), pygame.SRCALPHA)
+            pygame.draw.circle(ps, (*p["color"], alpha),
+                               (p["size"], p["size"]), p["size"])
+            surface.blit(ps, (int(p["x"]) - p["size"], int(p["y"]) - p["size"]))
+
+    def _draw_buildup(self, surface, cx, cy, now, elapsed):
+        """Dramatic chest opening anticipation."""
+        progress = min(1.0, elapsed / self._buildup_duration)
+
+        # Pulsing glow expanding from center
+        glow_r = int(50 + 150 * progress)
+        glow_alpha = int(30 + 70 * progress * (0.5 + 0.5 * math.sin(now * 0.01)))
+        glow_s = pygame.Surface((glow_r * 2, glow_r * 2), pygame.SRCALPHA)
+        pygame.draw.circle(glow_s, (255, 200, 50, glow_alpha),
+                           (glow_r, glow_r), glow_r)
+        surface.blit(glow_s, (cx - glow_r, cy - glow_r))
+
+        # Chest icon (growing)
+        chest_size = int(30 + 30 * progress)
+        half = chest_size // 2
+        # Body
+        body_r = pygame.Rect(cx - half, cy - half // 2, chest_size, half + 6)
+        pygame.draw.rect(surface, (120, 80, 30), body_r, border_radius=3)
+        pygame.draw.rect(surface, (200, 160, 60), body_r, 2, border_radius=3)
+        # Lid opening
+        lid_open = int(12 * progress)
+        lid_r = pygame.Rect(cx - half - 2, cy - half // 2 - 6 - lid_open,
+                            chest_size + 4, 8)
+        pygame.draw.rect(surface, (160, 120, 40), lid_r, border_radius=2)
+        pygame.draw.rect(surface, (200, 160, 60), lid_r, 1, border_radius=2)
+        # Lock
+        pygame.draw.circle(surface, (255, 220, 50),
+                           (cx, cy - half // 2 + 2), 4)
+
+        # Light rays from chest
+        if progress > 0.3:
+            ray_alpha = int(100 * (progress - 0.3) / 0.7)
+            for i in range(8):
+                angle = now * 0.001 + i * math.pi / 4
+                rx = cx + math.cos(angle) * glow_r * 0.8
+                ry = cy + math.sin(angle) * glow_r * 0.8 - 20
+                ls = pygame.Surface((6, 6), pygame.SRCALPHA)
+                pygame.draw.circle(ls, (255, 255, 200, ray_alpha), (3, 3), 3)
+                surface.blit(ls, (int(rx) - 3, int(ry) - 3))
+
         # Title
-        title = self.font_big.render("BOSS CHEST OPENED!", True, (255, 220, 50))
-        surface.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 100))
+        title = self.font_big.render("BOSS CHEST", True, (255, 220, 50))
+        surface.blit(title, (cx - title.get_width() // 2, cy - 120))
 
-        count_text = self.font.render(f"Choose an upgrade ({len(self.rewards)} available):", True, WHITE)
-        surface.blit(count_text, (SCREEN_WIDTH // 2 - count_text.get_width() // 2, 145))
+        # Suspense text
+        dots = "." * (1 + (now // 400) % 3)
+        hint = self.font.render(f"Opening{dots}", True, (200, 200, 200))
+        surface.blit(hint, (cx - hint.get_width() // 2, cy + 80))
 
-        # Rewards
-        card_w, card_h = 380, 60
-        start_y = 190
-        for i, reward in enumerate(self.rewards):
-            cy = start_y + i * (card_h + 10)
-            cx = SCREEN_WIDTH // 2 - card_w // 2
+    def _draw_rewards(self, surface, cx, cy, now):
+        """Draw revealed reward cards."""
+        num_rewards = len(self.rewards)
+        shown = min(self._reveal_index, num_rewards)
 
-            # Reveal animation
-            elapsed = now - self.open_time
-            reveal_delay = i * 200
-            if elapsed < reveal_delay:
-                continue
+        # Title with reward count
+        color_title = (255, 255, 100) if num_rewards >= 4 else (255, 220, 50)
+        title_text = "JACKPOT!" if self._jackpot else f"{num_rewards} REWARD{'S' if num_rewards > 1 else ''}!"
+        title = self.font_big.render(title_text, True, color_title)
+        surface.blit(title, (cx - title.get_width() // 2, 40))
 
-            # Highlight selected
-            if i == self.selected:
-                pygame.draw.rect(surface, (60, 60, 80), (cx - 4, cy - 4, card_w + 8, card_h + 8), border_radius=8)
-                pygame.draw.rect(surface, (255, 215, 0), (cx - 4, cy - 4, card_w + 8, card_h + 8), 2, border_radius=8)
+        # Jackpot flash background
+        if self._jackpot and self.phase == "revealed":
+            flash = int(30 * (0.5 + 0.5 * math.sin(now * 0.008)))
+            fs = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            fs.fill((255, 220, 50, flash))
+            surface.blit(fs, (0, 0))
 
-            # Card
-            pygame.draw.rect(surface, (25, 25, 35), (cx, cy, card_w, card_h), border_radius=6)
-            pygame.draw.rect(surface, reward.get("color", (150, 150, 150)),
-                           (cx, cy, card_w, card_h), 2, border_radius=6)
+        # Layout cards
+        card_w, card_h = 360, 70
+        total_h = num_rewards * (card_h + 12) - 12
+        start_y = cy - total_h // 2
 
-            # Number key
-            num = self.font.render(f"[{i + 1}]", True, (120, 120, 120))
-            surface.blit(num, (cx + 10, cy + 16))
+        for i in range(shown):
+            reward = self.rewards[i]
+            r_col = reward.get("color", (180, 180, 180))
+            card_y = start_y + i * (card_h + 12)
 
-            # Icon
-            icon_color = reward.get("color", WHITE)
-            icon = self.font_big.render(reward["icon"], True, icon_color)
-            surface.blit(icon, (cx + 50, cy + 10))
+            # Card entrance slide-in
+            reveal_age = now - (self._reveal_time if self.phase == "revealed"
+                                else self._reveal_time + i * self._reveal_interval)
+            if self.phase == "revealing":
+                reveal_age = now - (self._reveal_time + i * self._reveal_interval)
+            slide = min(1.0, max(0.0, reveal_age / 200))
+            card_x = int(cx - card_w // 2 - 60 * (1 - slide))
+            alpha = int(255 * slide)
+
+            # Card background
+            card = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
+            bg_color = (30, 30, 40, min(220, alpha))
+            pygame.draw.rect(card, bg_color, (0, 0, card_w, card_h),
+                             border_radius=6)
+            border_col = (*r_col, min(255, alpha))
+            pygame.draw.rect(card, border_col, (0, 0, card_w, card_h),
+                             2, border_radius=6)
+
+            # Icon circle
+            icon_cx, icon_cy = 35, card_h // 2
+            pygame.draw.circle(card, (*r_col, min(200, alpha)),
+                               (icon_cx, icon_cy), 18)
+            icon_t = self.font_icon.render(reward["icon"], True, (255, 255, 255))
+            icon_t.set_alpha(alpha)
+            card.blit(icon_t, (icon_cx - icon_t.get_width() // 2,
+                               icon_cy - icon_t.get_height() // 2))
 
             # Name
-            name = self.font.render(reward["name"], True, WHITE)
-            surface.blit(name, (cx + 90, cy + 16))
+            name_t = self.font.render(reward["name"], True, r_col)
+            name_t.set_alpha(alpha)
+            card.blit(name_t, (65, 12))
 
-            # Type tag
+            # Effect tag
             if reward["effect"] == "weapon":
                 tag = "WEAPON"
             elif reward["effect"] == "passive":
                 tag = "PASSIVE"
             else:
-                tag = "STAT"
-            tag_surf = self.font_small.render(tag, True, (100, 100, 100))
-            surface.blit(tag_surf, (cx + card_w - tag_surf.get_width() - 10, cy + 22))
+                tag = "STAT BOOST"
+            tag_t = self.font_small.render(tag, True, (150, 150, 160))
+            tag_t.set_alpha(alpha)
+            card.blit(tag_t, (65, 38))
 
-        # Hint
-        hint = self.font_small.render("W/S or Up/Down to select  |  Enter/Space or 1-5 to confirm", True, (100, 100, 100))
-        surface.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2,
-                           start_y + len(self.rewards) * (card_h + 10) + 30))
+            surface.blit(card, (card_x, card_y))
+
+        # Instructions
+        if self.phase == "revealing":
+            hint = self.font_small.render("Press SPACE to skip...",
+                                          True, (120, 120, 120))
+        elif self.phase == "revealed":
+            hint = self.font.render("Press SPACE to continue",
+                                    True, (180, 180, 180))
+        else:
+            hint = self.font_small.render("...", True, (100, 100, 100))
+        surface.blit(hint, (cx - hint.get_width() // 2, SCREEN_HEIGHT - 50))

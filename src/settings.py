@@ -1,8 +1,13 @@
 # -- Display --
+# NOTE: SCREEN_WIDTH / SCREEN_HEIGHT are patched by main.py at startup
+# to match the user's chosen resolution (default: native desktop).
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
+NATIVE_WIDTH = 0   # filled in by main.py
+NATIVE_HEIGHT = 0  # filled in by main.py
+RESOLUTIONS: dict = {}  # filled in by main.py
 FPS = 60
-TITLE = "Hack 'n Slash"
+TITLE = "Cyber Survivor"
 
 # -- Colors --
 BLACK = (0, 0, 0)
@@ -13,6 +18,30 @@ BLUE = (30, 144, 255)
 YELLOW = (255, 215, 0)
 DARK_GRAY = (40, 40, 40)
 LIGHT_GRAY = (180, 180, 180)
+
+# -- Passives --
+MAX_PASSIVES = 4
+
+# icon letter + color for HUD display  (key → (icon, color))
+PASSIVE_INFO = {
+    "vampiric_strike":  ("V", (200, 0, 80)),
+    "chain_lightning":  ("Z", (100, 200, 255)),
+    "thorns":           ("T", (180, 100, 50)),
+    "second_wind":      ("L", (255, 100, 100)),
+    "nano_regen":       ("N", (100, 255, 100)),
+    "berserker":        ("B", (255, 60, 60)),
+    "shield_matrix":    ("M", (100, 150, 255)),
+    "explosive_kills":  ("E", (255, 150, 0)),
+    "magnetic_field":   ("F", (150, 150, 255)),
+    "adrenaline":       ("A", (0, 255, 100)),
+    # Class built-in passives
+    "melee_lifesteal":  ("♥", (255, 80, 80)),
+    "armor_plating":    ("■", (120, 180, 255)),
+    "crit_shots":       ("!", (255, 200, 50)),
+    "evasion":          ("~", (180, 255, 180)),
+    "lucky_crits":      ("★", (255, 215, 0)),
+    "confetti_burst":   ("✦", (255, 100, 255)),
+}
 
 # -- Player --
 PLAYER_SPEED = 4
@@ -47,12 +76,12 @@ ENEMY_EYE_COLOR = (0, 200, 255)     # Dalek eyestalk glow
 ENEMY_SKIRT_COLOR = (90, 82, 74)    # Dalek skirt
 
 # -- Spawning --
-WAVE_BASE_COUNT = 8
-WAVE_GROWTH = 5
+WAVE_BASE_COUNT = 30
+WAVE_GROWTH = 12
 SPAWN_MARGIN = 80                   # px from screen edge
 
 # -- XP / Leveling --
-XP_PER_KILL = 25
+XP_PER_KILL = 8
 XP_TO_LEVEL = 100
 XP_LEVEL_SCALE = 1.4                # multiplier per level
 
@@ -82,5 +111,5 @@ ENEMY_DARKNESS_DMG_BONUS = 0.5      # extra damage fraction at full darkness
 TILE_SIZE = 64
 MAP_WIDTH = 50                      # tiles
 MAP_HEIGHT = 50                     # tiles
-FLOOR_COLOR = (50, 50, 55)
-WALL_COLOR = (90, 85, 80)
+FLOOR_COLOR = (34, 60, 28)
+WALL_COLOR = (20, 35, 18)

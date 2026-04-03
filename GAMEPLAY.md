@@ -9,8 +9,9 @@ A complete guide to everything in the game — classes, weapons, enemies, mechan
 | Action | Keys |
 |--------|------|
 | Move | W / A / S / D or Arrow Keys |
-| Attack | Space, J, or Left Mouse Click |
+| Attack / Confirm | Space, J, E, or Left Mouse Click |
 | Dash | Shift or K |
+| Pause | Esc or P |
 | Aim | Move the mouse — your character always faces the cursor |
 | Select chest reward | Number keys 1–5 |
 
@@ -20,9 +21,9 @@ A complete guide to everything in the game — classes, weapons, enemies, mechan
 
 You pick one of three classes at the start. Each has different stats, starting weapons, and built-in passive abilities.
 
-### Cyber Knight
+### Knight
 
-A tank who fights up close with melee weapons and shrugs off damage.
+Heavy armor, devastating melee. Born to fight up close.
 
 - **+30 HP**, **+5 Damage**
 - **Starting Weapon:** Sword
@@ -30,19 +31,19 @@ A tank who fights up close with melee weapons and shrugs off damage.
   - *Melee Lifesteal* — Recover 5 HP every time you kill an enemy with a melee weapon
   - *Armor Plating* — Take 20% less damage from all sources
 
-### Cyber Archer
+### Archer
 
-A fast, fragile ranged attacker who crits often and dodges incoming hits.
+Fast and deadly at range. Keep your distance.
 
 - **+1.0 Speed**, **-10 HP**
-- **Starting Weapon:** Throwing Daggers
+- **Starting Weapon:** Throwing Dagger
 - **Passives:**
   - *Crit Shots* — 20% chance to deal double damage with projectiles
   - *Evasion* — 15% chance to completely dodge any incoming attack
 
-### Cyber Jester
+### Jester
 
-A chaotic wildcard with moderate speed, explosive kills, and lucky damage spikes.
+Chaos incarnate. Funny weapons, unpredictable power.
 
 - **+0.5 Speed**
 - **Starting Weapon:** Rubber Chicken
@@ -128,32 +129,89 @@ Key details:
 
 ---
 
+## Zones
+
+The game progresses through three distinct zones. You reach the next zone by defeating the zone's big boss and stepping through the portal that appears.
+
+### Zone 1 — The Forest (Wasteland)
+Ancient woods filled with shadow. Hazards: **acid puddles** (wave 3), **dust storms** (wave 5), **solar flares** (wave 7).
+- Boss music: military march, D-minor, BPM 168
+
+### Zone 2 — Ruined Metropolis (City)
+Shattered skyscrapers. Hazards: **falling debris** (wave 3), **toxic gas** (wave 5), **electrical surges** (wave 7).
+- Boss music: glitch industrial, C#-minor, BPM 180
+
+### Zone 3 — The Abyss
+Reality fractures. The source of corruption. Hazards: **void rifts** (wave 3), **reality fractures** (wave 5), **entropic decay** (wave 7).
+- Boss music: cosmic horror tritone, BPM 85
+
+Zone hazards activate at the listed wave and persist for the rest of that zone.
+
+---
+
 ## Enemies
 
-### Dalek
-- **HP:** 40 | **Speed:** 2.5 | **Melee Damage:** 10 | **XP:** 25
-- Shoots cyan bullets (15 damage, every 900ms)
-- Engages at 200px range
+Each zone has 5 regular enemy types and 2 bosses (mini-boss and big boss). Bosses enter **Phase 2** when reduced to 40% HP — see the [Boss Phase 2](#boss-phase-2) section below.
 
-### Wraith
-- **HP:** 45 | **Speed:** 3.2 | **Melee Damage:** 14 | **XP:** 35
-- Melee-only — no ranged attacks, but faster and hits harder
-- Applies **Poison** on hit
-- Starts appearing mixed in with Daleks after early waves (up to ~45% of spawns)
+### Zone 1 — The Forest
 
-### Mini Boss
-- **HP:** 800 | **Speed:** 1.5 | **Melee Damage:** 25 | **XP:** 200
-- Shoots bullets (16 damage, every 900ms) from 350px range
-- Applies **Fire** on hit
-- Shows a boss HP bar on the HUD
+| Enemy | Notes |
+|-------|-------|
+| **Dalek** | Ranged — shoots cyan bullets every 1200ms, engages at 320px |
+| **Wraith** | Fast melee — applies **Poison** on hit |
+| **Charger** | Charges in a straight line toward the player |
+| **Shielder** | Has a damage-absorbing shield; break the shield first |
+| **Spitter** | Longer-range acid ranged attacker |
+| **Iron Sentinel** *(mini-boss)* | 3-way spread shots, **missile_barrage** special |
+| **Warlord Kron** *(big boss)* | 5-way spread shots, **bleed_storm** special |
 
-### Big Boss
-- **HP:** 2,500 | **Speed:** 1.2 | **Melee Damage:** 40 | **XP:** 800
-- Shoots bullets (25 damage, every 600ms) from 400px range — fires faster than the mini boss
-- Applies **Bleed** on hit
-- Shows a boss HP bar on the HUD
+### Zone 2 — Ruined Metropolis
+
+| Enemy | Notes |
+|-------|-------|
+| **Cyber Zombie** | Slow, high HP melee |
+| **Cyber Dog** | Fast melee, low HP |
+| **Drone** | Ranged flyer |
+| **Cultist** | Ranged — applies **Fire** on hit |
+| **Shambler** | Slow, large AOE melee swing |
+| **Preacher** *(mini-boss)* | 3-way fire spread shots, **fire_ring** special |
+| **Eldritch Horror** *(big boss)* | 7-shot fan spread, **eldritch_pull** special |
+
+### Zone 3 — The Abyss
+
+| Enemy | Notes |
+|-------|-------|
+| **Void Wisp** | Ranged, fast, low HP |
+| **Rift Walker** | Teleports near the player |
+| **Mirror Shade** | Copies your movement direction |
+| **Gravity Warden** | Gravity-pull AOE that drags you in |
+| **Null Serpent** | Long-range, high HP |
+| **Architect** *(mini-boss)* | 3-way void bolts, **void_cage** special |
+| **Nexus** *(big boss)* | 9-shot ring spread, **reality_collapse** special |
 
 Bosses take reduced knockback compared to normal enemies.
+
+---
+
+## Boss Phase 2
+
+When any boss reaches **40% HP** it enters an enraged Phase 2:
+
+- **+40% movement speed**
+- **−45% attack cooldowns** (fires much faster)
+- Spread shot count increases
+- Activates a **secondary special ability** unique to each boss
+
+| Boss | Phase 2 Special |
+|------|-----------------|
+| Iron Sentinel | missile_barrage — carpet of homing missiles |
+| Warlord Kron | bleed_storm — spreading bleed field |
+| Preacher | fire_ring — expanding ring of fire |
+| Eldritch Horror | eldritch_pull — pulls player and enemies together |
+| Architect | void_cage — rings of void bolts |
+| Nexus | reality_collapse — screen-wide reality distortion |
+
+Boss music starts when the boss spawns and stops on death. Boss music is unique per zone and cached so it only generates once.
 
 ---
 
@@ -186,8 +244,18 @@ The game is an endless wave survival. Each wave spawns a group of enemies you mu
 A separate difficulty system that scales over time:
 
 - Enemies deal and take scaled damage based on darkness
-- You earn **more XP** as darkness increases (+50% per darkness level)
+- You earn **more XP** as darkness increases (up to +200% at max darkness)
 - The screen gets progressively darker
+
+---
+
+## Pause Menu
+
+Press **Esc** or **P** at any time during gameplay to open the pause menu:
+
+- **Resume** — return to the game
+- **Settings** — adjust resolution, fullscreen, and music volume
+- **Quit to Menu** — return to the main menu (progress for the current run is lost)
 
 ---
 
@@ -214,8 +282,8 @@ Some trees on the map bear fruit (roughly 10% of all trees). Hit them with a mel
 
 Press **Shift** or **K** to dash in your current movement direction.
 
-- **Duration:** 200ms of fast movement
-- **Cooldown:** 600ms between dashes
+- **Duration:** 150ms of fast movement
+- **Cooldown:** 800ms between dashes
 - **Invincibility:** You are invincible for 300ms during and after the dash
 - Great for escaping boss attacks or dodging into melee range
 
@@ -229,11 +297,17 @@ Enemies drop items on death. Walk over them to collect.
 
 | Pickup | Effect |
 |--------|--------|
+| XP Orb | Grants XP — glowing green orb, disappears after 12 seconds |
+| Coin | Adds to your coin total — 25% chance from enemies, 100% from bosses |
 | Heal | +30 HP |
 | Damage Up | +5 base damage |
 | Speed Up | +0.3 movement speed |
 | Range Up | +8 attack range |
 | Max HP Up | +15 max HP (and instant +15 heal) |
+
+XP orbs must be collected before they expire — the **Magnetic Field** passive pulls them to you automatically from 150px away.
+
+Your coin count is displayed in the HUD.
 
 ---
 
@@ -245,12 +319,12 @@ Killing a boss spawns a glowing chest. Walk into it to open a reward screen with
 
 | Upgrade | Effect |
 |---------|--------|
-| Sharpened Edge | +10 Damage |
-| Extended Reach | +15 Range |
-| Quick Hands | -80ms Attack Cooldown |
-| Reinforced Armor | +40 Max HP (+ instant heal) |
-| Full Repair | Fully heals you |
-| Servo Boost | +0.8 Speed |
+| Overclocked Blade | +15 Damage |
+| Extended Reach | +20 Range |
+| Turbo Hands | -100ms Attack Cooldown |
+| Reinforced Chassis | +60 Max HP (+ instant heal) |
+| Emergency Repair | Fully heals you |
+| Overdrive | +1.0 Speed |
 
 ### Passive Abilities
 - **Nano Regen** — Regenerate 1 HP every 2 seconds
@@ -272,10 +346,10 @@ You gain XP from killing enemies. When you level up, you're offered a choice of 
 
 ### Stat Upgrades
 - **Power Surge** — +8 Damage
-- **Fortify** — +25 Max HP (+ instant heal)
-- **Quicken** — +0.5 Speed
-- **Long Arms** — +12 Range
-- **Rapid Strike** — -60ms Attack Cooldown
+- **Iron Skin** — +25 Max HP (+ instant heal)
+- **Leg Servos** — +0.5 Speed
+- **Quick Trigger** — -60ms Attack Cooldown
+- **Full Repair** — Fully heals you
 - **Glass Cannon** — +30% Damage but lose 20 Max HP (risky!)
 
 ### Passive Abilities (from level-ups)
@@ -300,6 +374,7 @@ The heads-up display shows:
 - **XP bar** — fills toward your next level
 - **Wave counter** — current wave number
 - **Boss HP bar** — appears when a boss is alive
+- **Coin count** — your current coin total
 - **Radar** (corner) — shows dots for nearby enemies and the campfire
 - **Status effect icons** — appear on your character when affected
 - **Floating damage numbers** — pop up when you or enemies take hits
@@ -314,8 +389,10 @@ The heads-up display shows:
 - **The Joy Buzzer hits 360°.** If you're surrounded, it's the only weapon that damages in every direction.
 - **Dash through danger.** You're invincible during a dash. Use it to escape boss swings or close the gap on ranged enemies.
 - **Orbiters are passive damage.** Blade Barrier / Banana-Rang orbit you and keep hitting nearby enemies while you focus on other threats.
-- **Boss bullets are the real threat.** Bosses are slow. Kite them and parry their shots, or dash through the bullets.
-- **Pick Quick Hands from chests if offered.** Reducing attack cooldown makes every weapon better and gives you more parry opportunities.
+- **Bosses enrage at 40% HP.** When the enrage animation plays, they get faster, shoot more, and unlock a second special. Burst them down fast or increase your distance.
+- **Collect XP orbs quickly.** They disappear after 12 seconds. The Magnetic Field passive pulls them toward you automatically.
+- **Coins drop from bosses every time.** Use them as a rough measure of boss kills and for legacy shop decisions.
+- **Pick Turbo Hands from chests if offered.** Reducing attack cooldown makes every weapon better and gives you more parry opportunities.
 - **The Cyber Bow pierces.** Arrows go through enemies, so line them up for multi-kills.
 - **Chain Lightning is amazing for crowds.** Each hit arcs to 2 nearby enemies — combine with fast weapons for constant chain procs.
 - **Second Wind is your insurance policy.** It revives you once per run. Take it early if you're pushing deep.

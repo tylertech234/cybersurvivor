@@ -105,11 +105,13 @@ DARKNESS_GROW_RATE = 0.0004         # darkness per frame away from campfire (0�
 DARKNESS_DECAY_RATE = 0.003         # darkness lost per frame near campfire
 
 # -- Backend (Supabase) --
-# Fill these in after creating your Supabase project.
-# The anon key is intentionally public — Row Level Security handles access.
-# Neither value should be your service-role key.
-SUPABASE_URL = ""          # e.g. "https://xyzcompany.supabase.co"
-SUPABASE_ANON_KEY = ""     # project anon/public key
+# Values are loaded from src/secrets.py (gitignored).
+# That file is never committed — fill it in locally.
+try:
+    from src.secrets import SUPABASE_URL, SUPABASE_ANON_KEY  # type: ignore
+except ImportError:
+    SUPABASE_URL = ""
+    SUPABASE_ANON_KEY = ""
 DARKNESS_MAX = 0.85                 # max darkness alpha (0..1)
 XP_DARKNESS_BONUS = 2.0             # max XP multiplier at full darkness
 ENEMY_DARKNESS_HP_BONUS = 0.6       # extra HP fraction at full darkness

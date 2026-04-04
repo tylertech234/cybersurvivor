@@ -13,8 +13,8 @@
 #   .\itch_push.ps1 -User YOUR_ITCH_USERNAME -Channel windows
 
 param(
-    [string]$User    = "YOUR_ITCH_USERNAME",   # your itch.io username
-    [string]$Game    = "cyber-survivor",        # itch.io project URL slug
+    [string]$User    = "tylertech",       # itch.io username
+    [string]$Game    = "cyber-survivor",  # itch.io project URL slug
     [string]$Version = "v0.9.1",
 
     # Which channels to push: "windows", "html5", or "all"
@@ -70,13 +70,7 @@ if ($Setup) {
 if (-not (Test-Path $ButlerExe)) {
     Write-Host "butler.exe not found." -ForegroundColor Red
     Write-Host "Run this script with -Setup to download it:" -ForegroundColor Yellow
-    Write-Host "  .\itch_push.ps1 -Setup" -ForegroundColor White
-    exit 1
-}
-
-if ($User -eq "YOUR_ITCH_USERNAME") {
-    Write-Host "Set your itch.io username with -User flag:" -ForegroundColor Red
-    Write-Host "  .\itch_push.ps1 -User your_username" -ForegroundColor White
+    Write-Host "  .\setup_itch.ps1" -ForegroundColor White
     exit 1
 }
 

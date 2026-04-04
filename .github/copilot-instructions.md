@@ -1,7 +1,7 @@
 # Copilot Instructions for Cyber Survivor
 
 ## Project Overview
-Python + Pygame top-down hack-and-slash survival game. ~14,000 LOC across 46 Python files. Procedural graphics and audio (zero external assets). Title: **"Cyber Survivor"**. Current version: `0.9.1` (Early Access).
+Python + Pygame top-down hack-and-slash survival game. Procedural graphics and audio (zero external assets). Title: **"Cyber Survivor"**. Current version: `0.9.1` (Early Access).
 
 ## Architecture
 - Entry: `main.py` → `src/game.py` Game class

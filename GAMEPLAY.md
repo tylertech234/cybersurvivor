@@ -76,21 +76,21 @@ Damage shown is a multiplier on your base damage stat.
 ### Ranged Weapons (Ranger)
 
 | Weapon | Damage | Cooldown | Projectiles | Speed | Lifetime | Notes |
-|--------|--------|----------|-------------|-------|----------|—-----|
+|--------|--------|----------|-------------|-------|----------|-------|
 | Throwing Dagger | 1.0x | 350ms | 1 | 8.0 | 900ms | Precision single throw |
 | Cyber Bow | 1.8x | 550ms | 1 | 11.0 | 1500ms | **Pierces through enemies** |
 | Pulse Rifle | 0.7x | 220ms | 1 | 10.0 | 700ms | Rapid fire energy bolts |
-| Scatter Shot | 0.6x | 600ms | 5 | 7.0 | 600ms | Wide 5-bolt spread |
-| Burst Crossbow | 1.0x | 480ms | 3 | 9.0 | 900ms | 3-bolt burst, slight spread |
-| Explosive Crossbow | 2.0x | 900ms | 1 | 7.5 | 1200ms | Explodes on impact, 50px splash |
+| Scatter Shot | 0.9x | 600ms | 5 | 7.0 | 600ms | Wide 5-bolt spread |
+| Tri-Burst Crossbow | 1.1x | 480ms | 3 | 10.5 | 800ms | 3-bolt burst, tight spread |
+| Explosive Crossbow | 2.2x | 900ms | 1 | 7.0 | 700ms | Explodes on impact, 60px splash |
 
 ### Ranged Weapons (Jester)
 
 | Weapon | Damage | Cooldown | Type | Notes |
 |--------|--------|----------|------|-------|
 | Banana-Rang | 0.9x | 450ms | Orbiter | Launches out, returns, orbits you (max 3) |
-| Pie Launcher | 2.2x | 700ms | Grenade | Explodes on contact |
-| Confetti Grenade | 1.8x | 800ms | Grenade | 60px splash radius, area damage |
+| Pie Launcher | 2.2x | 700ms | Projectile | Thrown cream pie — no AoE |
+| Confetti Grenade | 2.8x | 600ms | Grenade | 60px splash radius, 600ms fuse |
 
 ### Orbiting Weapons (Knight: Blade Barrier / Jester: Banana-Rang)
 
@@ -104,7 +104,7 @@ These unique weapons launch outward, then come back and orbit around you dealing
 
 ### Grenade Mechanics
 
-Grenades (Pie Launcher, Confetti Grenade) explode on enemy contact or after 600ms.
+Grenades (Confetti Grenade, Explosive Crossbow) explode on enemy contact or after their fuse expires.
 
 - **Splash radius:** 60px
 - **Damage falloff:** 100% at center, down to 30% at the edge
@@ -188,7 +188,7 @@ The portal menu uses a frozen screenshot of the game as its background — no pe
 
 ## Enemies
 
-Each zone has 5 regular enemy types and 2 bosses (mini-boss and big boss). Bosses enter **Phase 2** when reduced to 40% HP — see the [Boss Phase 2](#boss-phase-2) section below.
+Each zone has regular enemies and 2 bosses (mini-boss and big boss). Regular enemy counts vary by zone: 6 in wasteland, 5 in city, 6 in abyss. Bosses enter **Phase 2** when reduced to 40% HP — see the [Boss Phase 2](#boss-phase-2) section below.
 
 ### Zone 1 — The Forest
 

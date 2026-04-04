@@ -62,6 +62,9 @@ from src.ui.toast import ToastManager
 from src.ui.compendium_screen import CompendiumScreen
 from src.systems.profile import PlayerProfile, create_profile
 from src.ui.name_entry_screen import NameEntryScreen
+from src.systems.telemetry import TelemetryClient
+from src.ui.consent_screen import ConsentScreen
+from src.ui.leaderboard_screen import LeaderboardScreen
 
 
 class Game:

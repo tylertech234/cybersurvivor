@@ -141,7 +141,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CyberSurvivor-Web
-          path: build/CyberSurvivor/
+          path: build/web/
           if-no-files-found: error
 
   # ── Publish to itch.io via butler ────────────────────────────────────────────

@@ -30,7 +30,12 @@ class Player:
         # Weapon — from class starting weapon
         self.weapon_name = cls["start_weapon"]
         self.weapon = get_weapon(self.weapon_name)
+        # Stat bonuses accumulated from upgrades — persist across weapon swaps
+        self._range_bonus: int = 0
+        self._cooldown_bonus: int = 0
         self._apply_weapon_stats()
+        # Arsenal — all weapons the player has collected this run
+        self.arsenal: list[str] = [self.weapon_name]
 
         # Passives
         self.passives = list(cls["passives"])
@@ -95,13 +100,16 @@ class Player:
         self.vision_debuff_until = 0
 
     def _apply_weapon_stats(self):
-        self.attack_cooldown = self.weapon["cooldown"]
+        """Reset weapon stats from the equipped weapon, then restore accumulated bonuses."""
+        self.attack_cooldown = max(80, self.weapon["cooldown"] - self._cooldown_bonus)
         self.attack_duration = self.weapon["duration"]
-        self.attack_range = self.weapon["range"]
+        self.attack_range = self.weapon["range"] + self._range_bonus
 
     def equip_weapon(self, weapon_key: str):
         self.weapon_name = weapon_key
         self.weapon = get_weapon(weapon_key)
+        if weapon_key not in self.arsenal:
+            self.arsenal.append(weapon_key)
         self._apply_weapon_stats()
 
     @property

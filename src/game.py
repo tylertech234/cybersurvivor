@@ -44,6 +44,7 @@ from src.systems.game_actions import process_enemy_death, fire_player_projectile
 from src.entities.enemy import Enemy, ENEMY_TYPES
 from src.ui.passive_swap import PassiveSwapScreen
 from src.ui.weapon_swap import WeaponSwapScreen
+from src.ui.arsenal_screen import ArsenalScreen
 from src.ui.main_menu import MainMenuScreen, load_settings, save_settings
 from src.ui.run_summary import RunSummaryScreen
 from src.ui.portal_screen import PortalMenuScreen
@@ -104,7 +105,7 @@ class Game:
         self.auto_attack = False
         self.paused = False
         self._pause_selected = 0
-        self._pause_options = ["Resume", "Settings", "Quit to Menu", "Quit Game"]
+        self._pause_options = ["Resume", "Switch Weapon", "Settings", "Quit to Menu", "Quit Game"]
         self._debug_mode = False
 
         # Compendium + notifications (persist across runs)
@@ -218,6 +219,7 @@ class Game:
         self.chest_reward = ChestRewardScreen()
         self.passive_swap = PassiveSwapScreen()
         self.weapon_swap = WeaponSwapScreen()
+        self.arsenal_screen = ArsenalScreen()
         self.boss_chests: list[BossChest] = []
         self.animations = AnimationSystem()
         self.run_stats = RunStats()
@@ -497,6 +499,8 @@ class Game:
                         if opt == "Resume":
                             self.paused = False
                             self.sounds.play("unpause")
+                        elif opt == "Switch Weapon":
+                            self.arsenal_screen.activate(self.player.arsenal, self.player.weapon_name)
                         elif opt == "Settings":
                             self.main_menu.settings_open = True
                             self.main_menu.settings_selected = 0
@@ -546,6 +550,13 @@ class Game:
                 result = self.weapon_swap.handle_event(event)
                 if result is not None:
                     self._apply_weapon_swap(result)
+                continue
+
+            # Arsenal screen intercepts all input when open
+            if self.arsenal_screen.active:
+                result = self.arsenal_screen.handle_event(event)
+                if result is not None:
+                    self._apply_arsenal_equip(result)
                 continue
 
             # Level-up screen intercepts input
@@ -627,11 +638,19 @@ class Game:
             p.speed += value
         elif effect == "range":
             p.attack_range += value
+            p._range_bonus += value   # persist across weapon swaps
         elif effect == "heal":
             p.hp = p.max_hp
         elif effect == "cooldown":
             p.attack_cooldown = max(80, p.attack_cooldown - value)
+            p._cooldown_bonus += value  # persist across weapon swaps
         elif effect == "weapon":
+            # Always add to arsenal; then ask if they want to equip it now
+            if value not in p.arsenal:
+                p.arsenal.append(value)
+                from src.systems.weapons import WEAPONS as _WPNS
+                wn = _WPNS.get(value, {}).get("name", value)
+                self.toasts.show(f"Collected: {wn}", "Switch via PAUSE → Switch Weapon", (255, 200, 50))
             self.weapon_swap.activate(p.weapon_name, value)
         elif effect == "glass_cannon":
             p.damage = int(p.damage * 1.3)
@@ -682,6 +701,17 @@ class Game:
             log.info("Weapon swapped to: %s", result["weapon"])
         else:
             log.info("Weapon swap skipped")
+
+    def _apply_arsenal_equip(self, result: dict):
+        """Handle result from arsenal screen — equip a collected weapon."""
+        if result["action"] == "equip":
+            self.player.equip_weapon(result["weapon"])
+            self.run_stats.set_weapon(self.player.weapon_name, self.player.weapon.get("name", ""),
+                                      self.player.weapon.get("cooldown", 500))
+            wn = self.player.weapon.get("name", result["weapon"])
+            self.toasts.show(f"Equipped: {wn}", "", (100, 220, 100))
+            log.info("Arsenal equip: %s", result["weapon"])
+        self.paused = False
 
     def _fire_super_skill(self):
         """Fire the class super skill and consume all energy."""
@@ -780,6 +810,7 @@ class Game:
         if self.auto_attack or pygame.mouse.get_pressed()[0]:
             if not (self.levelup_screen.active or self.chest_reward.active
                     or self.passive_swap.active or self.weapon_swap.active
+                    or self.arsenal_screen.active
                     or self.paused or self.game_over):
                 if self.player.try_attack(now):
                     from src.systems.game_actions import fire_player_projectile as _fpp
@@ -802,13 +833,15 @@ class Game:
                                          self.player.passives,
                                          base_damage=self.player.damage,
                                          current_weapon=self.player.weapon,
-                                         upgrade_tiers=self.player.upgrade_tiers)
+                                         upgrade_tiers=self.player.upgrade_tiers,
+                                         arsenal=self.player.arsenal)
             log.info("Level-up screen activated, choices=%s",
                      [c.get('name','?') for c in self.levelup_screen.choices])
 
         # Pause gameplay during level-up, chest reward, passive swap, or fanfare
         if (self.levelup_screen.active or self.chest_reward.active
                 or self.passive_swap.active or self.weapon_swap.active
+                or self.arsenal_screen.active
                 or self._levelup_fanfare_time):
             return
 
@@ -1634,6 +1667,9 @@ class Game:
 
         # Weapon swap overlay
         self.weapon_swap.draw(self.screen)
+
+        # Arsenal screen overlay
+        self.arsenal_screen.draw(self.screen)
 
         # Passive swap overlay
         self.passive_swap.draw(self.screen)

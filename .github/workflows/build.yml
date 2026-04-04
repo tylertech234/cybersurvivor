@@ -137,6 +137,28 @@ jobs:
       - name: Build web bundle
         run: python -m pygbag --build --app_name CyberSurvivor --width 1280 --height 720 --disable-sound-format-error main.py
 
+      - name: Patch web HTML for viewport scaling
+        run: |
+          python - <<'EOF'
+          import re, pathlib
+          p = pathlib.Path("build/web/index.html")
+          html = p.read_text(encoding="utf-8")
+          # Make canvas scale to fill viewport while preserving 16:9 aspect ratio
+          html = html.replace(
+              "background-color: transparent;",
+              "background-color: transparent;\n            object-fit: contain;"
+          )
+          # Black letterbox instead of powderblue
+          html = html.replace("background-color:powderblue;", "background-color:#000000;")
+          # Ensure html/body fill viewport height
+          html = html.replace(
+              "body {\n            font-family: arial;",
+              "html { height: 100%; }\n        body {\n            height: 100%;\n            font-family: arial;"
+          )
+          p.write_text(html, encoding="utf-8")
+          print("Patched index.html for viewport scaling")
+          EOF
+
       - name: Upload web artifact
         uses: actions/upload-artifact@v4
         with:

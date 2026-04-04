@@ -114,7 +114,7 @@ class Game:
         self.compendium_screen = CompendiumScreen(self.compendium)
 
         # Show name entry screen on first launch (runs synchronously before main loop)
-        if self.profile.needs_name():
+        if self.profile.needs_name() and sys.platform != "emscripten":
             self._run_name_entry_sync()
 
         # Analytics / leaderboard

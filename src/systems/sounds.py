@@ -1,16 +1,17 @@
 import pygame
 import math
 import array
+import sys
+
+_IS_WEB = sys.platform == "emscripten"  # pygbag / itch.io HTML5 build
 
 
 class SoundManager:
     """Procedurally generated sound effects and zone-specific music."""
 
     def __init__(self):
-        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
-        pygame.mixer.set_num_channels(8)
+        self._is_web = _IS_WEB
         self.sounds: dict[str, pygame.mixer.Sound] = {}
-        self._generate_all()
         self._music_playing = False
         self._combat_intensity = 0.0
         self._zone_music: dict[str, tuple] = {}
@@ -19,6 +20,15 @@ class SoundManager:
         self._current_music_zone = None
         self._boss_music: dict[str, pygame.mixer.Sound] = {}
         self.boss_music_playing = False
+
+        if self._is_web:
+            # Skip all audio generation on web — pure-Python waveform loops
+            # take 30+ seconds in WASM and freeze the browser.
+            return
+
+        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+        pygame.mixer.set_num_channels(8)
+        self._generate_all()
         self._generate_zone_music()
         self._generate_boss_music()
 
@@ -27,12 +37,16 @@ class SoundManager:
     # ------------------------------------------------------------------
 
     def play(self, name: str):
+        if self._is_web:
+            return
         snd = self.sounds.get(name)
         if snd:
             snd.play()
 
     def set_zone_music(self, zone_name: str):
         """Switch to the music pair for the given zone."""
+        if self._is_web:
+            return
         if zone_name == self._current_music_zone:
             return
         was_playing = self._music_playing
@@ -46,6 +60,8 @@ class SoundManager:
             self.start_music()
 
     def start_music(self):
+        if self._is_web:
+            return
         if not self._music_playing and self._bgm_base:
             self._base_channel = pygame.mixer.Channel(1)
             self._combat_channel = pygame.mixer.Channel(2)
@@ -56,6 +72,8 @@ class SoundManager:
             self._music_playing = True
 
     def stop_music(self):
+        if self._is_web:
+            return
         if hasattr(self, '_base_channel'):
             self._base_channel.stop()
             self._combat_channel.stop()
@@ -63,6 +81,8 @@ class SoundManager:
 
     def set_music_intensity(self, level: float):
         """Crossfade between calm and combat music layers. 0.0=calm, 1.0=intense."""
+        if self._is_web:
+            return
         target = max(0.0, min(1.0, level))
         # Fast ramp up, slow decay back to calm
         if target > self._combat_intensity:
@@ -88,6 +108,8 @@ class SoundManager:
 
     def start_boss_music(self, zone: str):
         """Play intense boss music; mute regular BGM to background level."""
+        if self._is_web:
+            return
         track = self._boss_music.get(zone)
         if not track:
             return
@@ -101,8 +123,9 @@ class SoundManager:
 
     def stop_boss_music(self):
         """Stop boss music and restore zone music."""
-        if hasattr(self, '_boss_channel'):
-            self._boss_channel.stop()
+        if self._is_web:
+            return
+        self._boss_channel.stop()
         self.boss_music_playing = False
         # Restore zone BGM
         if self._music_playing and hasattr(self, '_base_channel'):

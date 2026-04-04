@@ -137,27 +137,106 @@ jobs:
       - name: Build web bundle
         run: python -m pygbag --build --app_name CyberSurvivor --width 1280 --height 720 --disable-sound-format-error main.py
 
-      - name: Patch web HTML for viewport scaling
+      - name: Patch web HTML — theme & viewport
         run: |
-          python - <<'EOF'
-          import re, pathlib
+          python - <<'PYEOF'
+          import pathlib
+
           p = pathlib.Path("build/web/index.html")
           html = p.read_text(encoding="utf-8")
-          # Make canvas scale to fill viewport while preserving 16:9 aspect ratio
+
+          # ── 1. Viewport: canvas fills browser, 16:9 aspect, black letterbox ──
           html = html.replace(
               "background-color: transparent;",
               "background-color: transparent;\n            object-fit: contain;"
           )
-          # Black letterbox instead of powderblue
           html = html.replace("background-color:powderblue;", "background-color:#000000;")
-          # Ensure html/body fill viewport height
           html = html.replace(
               "body {\n            font-family: arial;",
               "html { height: 100%; }\n        body {\n            height: 100%;\n            font-family: arial;"
           )
+
+          # ── 2. Inject Cyber Survivor theme overrides ──
+          THEME_CSS = """
+          <style>
+          /* ── Cyber Survivor web loader theme ── */
+          @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+          html, body {
+            background: #000 !important;
+            color: #0ff !important;
+            font-family: 'Press Start 2P', 'Courier New', monospace !important;
+          }
+
+          /* Loading info box */
+          .spinner, .info, .emscripten_border, #info {
+            background: rgba(20, 10, 40, 0.92) !important;
+            border: 1px solid #a855f7 !important;
+            border-radius: 8px !important;
+            color: #0ff !important;
+            font-family: 'Press Start 2P', 'Courier New', monospace !important;
+            font-size: 10px !important;
+          }
+
+          /* Status text */
+          #status, #progress, .status, p, div.emscripten {
+            color: #0ff !important;
+            font-family: 'Press Start 2P', 'Courier New', monospace !important;
+          }
+
+          /* Progress bar */
+          progress, #status-progress {
+            appearance: none;
+            -webkit-appearance: none;
+            height: 18px !important;
+            border: 1px solid #a855f7 !important;
+            border-radius: 4px !important;
+            background: #1a0a2e !important;
+          }
+          progress::-webkit-progress-bar {
+            background: #1a0a2e !important;
+            border-radius: 4px !important;
+          }
+          progress::-webkit-progress-value {
+            background: linear-gradient(90deg, #a855f7, #0ff) !important;
+            border-radius: 4px !important;
+          }
+          progress::-moz-progress-bar {
+            background: linear-gradient(90deg, #a855f7, #0ff) !important;
+            border-radius: 4px !important;
+          }
+
+          /* Links */
+          a { color: #a855f7 !important; }
+          a:hover { color: #0ff !important; }
+
+          /* Hide the default green spinner if present */
+          .spinner { display: none !important; }
+
+          /* Canvas container */
+          .emscripten_border, #canvas-container {
+            background: #000 !important;
+            border: none !important;
+          }
+          </style>
+          """
+          # Inject right before </head>
+          html = html.replace("</head>", THEME_CSS + "\n</head>")
+
+          # ── 3. Replace the default loading title ──
+          html = html.replace(
+              "<title>pygame-wasm</title>",
+              "<title>Cyber Survivor</title>"
+          )
+          # Also try the app-name variant
+          html = html.replace(
+              "<title>CyberSurvivor</title>",
+              "<title>Cyber Survivor</title>"
+          )
+
           p.write_text(html, encoding="utf-8")
-          print("Patched index.html for viewport scaling")
-          EOF
+          print("Patched index.html — theme + viewport + title")
+          PYEOF
 
       - name: Upload web artifact
         uses: actions/upload-artifact@v4

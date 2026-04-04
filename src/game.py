@@ -14,6 +14,8 @@ logging.basicConfig(
 )
 log = logging.getLogger("game")
 
+_IS_WEB = sys.platform == "emscripten"
+
 from src.settings import (
     SCREEN_WIDTH, SCREEN_HEIGHT, FPS, TITLE, BLACK,
     TILE_SIZE, MAP_WIDTH, MAP_HEIGHT,
@@ -34,7 +36,7 @@ from src.systems.lighting import LightingSystem
 from src.systems.sounds import SoundManager
 from src.systems.legacy import LegacyData
 from src.ui.hud import HUD
-from src.ui.radar import Radar
+from src.ui.minimap import Minimap
 from src.ui.levelup import LevelUpScreen
 from src.ui.charselect import CharacterSelectScreen
 from src.ui.legacy_screen import LegacyScreen
@@ -214,7 +216,7 @@ class Game:
             self.sounds.stop_boss_music()
         self.sounds = SoundManager()
         self.hud = HUD()
-        self.radar = Radar()
+        self.minimap = Minimap()
         self.levelup_screen = LevelUpScreen()
         self.chest_reward = ChestRewardScreen()
         self.passive_swap = PassiveSwapScreen()
@@ -304,6 +306,11 @@ class Game:
         self.sounds.start_music()
 
     async def run(self):
+        # On web, the canvas isn't properly sized until after the first async yield.
+        # Re-call set_mode so pygame/pygbag syncs to the actual canvas dimensions.
+        if sys.platform == "emscripten":
+            await asyncio.sleep(0)
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0)
         self.sounds.start_music()
         while self.running:
             dt = self.clock.tick(FPS)
@@ -461,10 +468,15 @@ class Game:
                 pygame.display.flip()
                 continue
 
-            self._handle_events()
-            if not self.game_over and not self.paused:
-                self._update(dt, now)
-            self._draw()
+            try:
+                self._handle_events()
+                if not self.game_over and not self.paused:
+                    self._update(dt, now)
+                self._draw()
+            except Exception:
+                import traceback as _tb
+                _tb.print_exc()
+                raise
         pygame.quit()
         sys.exit()
 
@@ -1408,8 +1420,7 @@ class Game:
         if len(self.pickups.pickups) < prev_count:
             self.sounds.play("pickup")
 
-        # Radar
-        self.radar.update(now, self.player.x, self.player.y, alive, self.sounds)
+        # Minimap needs no per-frame update — it reads positions at draw time
 
         # Dynamic music intensity — only ramp during boss waves, keep ambient otherwise
         if alive:
@@ -1643,8 +1654,9 @@ class Game:
         # Pickup notifications
         self.pickups.draw_notifications(self.screen)
 
-        # Radar (AVP motion tracker)
-        self.radar.draw(self.screen, self.player.facing_x, self.player.facing_y)
+        # Minimap
+        alive_for_map = self.spawner.get_alive_enemies()
+        self.minimap.draw(self.screen, self.player.x, self.player.y, alive_for_map)
 
         # Level-up fanfare flash overlay
         if self._levelup_fanfare_time:
@@ -1722,23 +1734,29 @@ class Game:
             dmg_pct = self._last_damage_pct
             peak_alpha = int((18 + dmg_pct * 145) * vfade)
             if peak_alpha > 1:
-                vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-                steps = 40
-                half = min(SCREEN_WIDTH, SCREEN_HEIGHT) // 2
-                for i in range(steps):
-                    frac = (1.0 - i / steps) ** 1.8  # steep rolloff toward center
-                    a = int(peak_alpha * frac)
-                    if a < 1:
-                        continue
-                    inset = i * half // steps
-                    rect = pygame.Rect(inset, inset,
-                                       SCREEN_WIDTH - 2 * inset,
-                                       SCREEN_HEIGHT - 2 * inset)
-                    if rect.width < 4 or rect.height < 4:
-                        break
-                    pygame.draw.rect(vig, (215, 10, 10, a), rect, 2,
-                                     border_radius=max(1, 28 - i // 2))
-                self.screen.blit(vig, (0, 0))
+                if _IS_WEB:
+                    # Lightweight red tint instead of 40-step gradient
+                    vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                    vig.fill((215, 10, 10, min(peak_alpha, 60)))
+                    self.screen.blit(vig, (0, 0))
+                else:
+                    vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                    steps = 40
+                    half = min(SCREEN_WIDTH, SCREEN_HEIGHT) // 2
+                    for i in range(steps):
+                        frac = (1.0 - i / steps) ** 1.8  # steep rolloff toward center
+                        a = int(peak_alpha * frac)
+                        if a < 1:
+                            continue
+                        inset = i * half // steps
+                        rect = pygame.Rect(inset, inset,
+                                           SCREEN_WIDTH - 2 * inset,
+                                           SCREEN_HEIGHT - 2 * inset)
+                        if rect.width < 4 or rect.height < 4:
+                            break
+                        pygame.draw.rect(vig, (215, 10, 10, a), rect, 2,
+                                         border_radius=max(1, 28 - i // 2))
+                    self.screen.blit(vig, (0, 0))
 
         # ---- Kill streak combo text ----
         streak_age = now_draw - self._kill_streak_time
@@ -1779,6 +1797,14 @@ class Game:
         remaining = self.player.vision_debuff_until - now
         intensity = min(1.0, remaining / 5000)
         t = now * 0.001
+
+        if _IS_WEB:
+            # Simplified: single purple tint overlay
+            alpha = int(50 * intensity)
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((100, 20, 150, alpha))
+            self.screen.blit(overlay, (0, 0))
+            return
 
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
 

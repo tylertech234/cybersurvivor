@@ -55,9 +55,17 @@ from src.systems.profile import create_profile  # noqa: E402
 
 
 async def main():
-    profile = create_profile()
-    game = Game(profile)
-    await game.run()
+    try:
+        profile = create_profile()
+        game = Game(profile)
+        await game.run()
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        # Keep the browser tab alive so the user can read the error
+        import asyncio as _aio
+        while True:
+            await _aio.sleep(1)
 
 
 if __name__ == "__main__":

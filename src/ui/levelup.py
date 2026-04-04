@@ -31,32 +31,97 @@ LEVEL_UPGRADES = [
 ]
 
 
-# Weapon-specific upgrades — only offered when the player has the matching weapon
-WEAPON_UPGRADES = {
+# Weapon-specific upgrades — offered when the player has the matching weapon (or it's in arsenal).
+# Each weapon has a LIST so players get 2 different upgrade types per weapon.
+# Generic upgrades (damage, range, cooldown) persist across weapon swaps — they buff the player, not the weapon.
+WEAPON_UPGRADES: dict[str, list[dict]] = {
     # Knight weapons
-    "sword":          {"name": "Flame Slash",      "icon": "🗡", "color": (255, 120, 30),  "effect": "damage",   "value": 12, "desc": "+12 damage with fire sword strikes"},
-    "axe":            {"name": "Cleaving Arc",     "icon": "🪓", "color": (200, 80, 50),   "effect": "range",    "value": 15, "desc": "+15 attack range — wider axe arc"},
-    "spear":          {"name": "Piercing Thrust",  "icon": "⟶", "color": (140, 200, 255), "effect": "damage",   "value": 10, "desc": "+10 damage — spear pierces deeper"},
-    "hammer":         {"name": "Shockwave",        "icon": "⚡", "color": (255, 220, 50),  "effect": "damage",   "value": 14, "desc": "+14 damage — hammer shockwave"},
-    "plasma_blade":   {"name": "Plasma Overcharge","icon": "⚡", "color": (0, 255, 200),   "effect": "cooldown", "value": 80, "desc": "-80ms cooldown — rapid plasma cuts"},
-    "gravity_maul":   {"name": "Gravity Well",     "icon": "◉", "color": (150, 0, 255),   "effect": "damage",   "value": 16, "desc": "+16 damage — gravity crush"},
-    "blade_barrier":  {"name": "Razor Vortex",     "icon": "✦", "color": (255, 100, 100), "effect": "range",    "value": 20, "desc": "+20 range — spinning blade reach"},
-    "shield_bash":    {"name": "Fortified Bash",   "icon": "■", "color": (100, 160, 255), "effect": "max_hp",   "value": 30, "desc": "+30 Max HP — shield reinforcement"},
+    "sword": [
+        {"name": "Flame Slash",    "icon": "D", "color": (255, 120, 30),  "effect": "damage",   "value": 12, "desc": "+12 damage — burning sword strikes"},
+        {"name": "Strike Tempo",   "icon": "C", "color": (255, 180, 80),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster swing rhythm"},
+    ],
+    "axe": [
+        {"name": "Cleaving Arc",   "icon": "R", "color": (200, 80, 50),   "effect": "range",    "value": 18, "desc": "+18 range — wider axe arc"},
+        {"name": "Executioner",    "icon": "D", "color": (220, 60, 40),   "effect": "damage",   "value": 14, "desc": "+14 damage — decapitating blow"},
+    ],
+    "spear": [
+        {"name": "Piercing Thrust","icon": "D", "color": (140, 200, 255), "effect": "damage",   "value": 10, "desc": "+10 damage — spear pierces deeper"},
+        {"name": "Swift Jab",      "icon": "C", "color": (100, 180, 255), "effect": "cooldown", "value": 75, "desc": "-75ms cooldown — rapid jabbing"},
+    ],
+    "hammer": [
+        {"name": "Shockwave",      "icon": "D", "color": (255, 220, 50),  "effect": "damage",   "value": 16, "desc": "+16 damage — hammer shockwave"},
+        {"name": "Tectonic Force", "icon": "R", "color": (200, 150, 50),  "effect": "range",    "value": 20, "desc": "+20 range — ground-crack radius"},
+    ],
+    "plasma_blade": [
+        {"name": "Plasma Overcharge","icon":"C", "color": (0, 255, 200),  "effect": "cooldown", "value": 80, "desc": "-80ms cooldown — rapid plasma cuts"},
+        {"name": "Thermal Edge",   "icon": "D", "color": (0, 200, 255),   "effect": "damage",   "value": 12, "desc": "+12 damage — superheated edge"},
+    ],
+    "gravity_maul": [
+        {"name": "Gravity Well",   "icon": "D", "color": (150, 0, 255),   "effect": "damage",   "value": 18, "desc": "+18 damage — gravity crush"},
+        {"name": "Null Field",     "icon": "R", "color": (180, 60, 255),  "effect": "range",    "value": 22, "desc": "+22 range — warp field expands"},
+    ],
+    "blade_barrier": [
+        {"name": "Razor Vortex",   "icon": "R", "color": (255, 100, 100), "effect": "range",    "value": 20, "desc": "+20 range — spinning blade reach"},
+        {"name": "Barrier Storm",  "icon": "C", "color": (255, 80, 80),   "effect": "cooldown", "value": 65, "desc": "-65ms cooldown — faster orbit cycle"},
+    ],
+    "shield_bash": [
+        {"name": "Fortified Bash", "icon": "H", "color": (100, 160, 255), "effect": "max_hp",   "value": 35, "desc": "+35 Max HP — shield reinforcement"},
+        {"name": "Counter Strike", "icon": "D", "color": (80, 140, 255),  "effect": "damage",   "value": 10, "desc": "+10 damage — retaliatory bash"},
+    ],
     # Archer weapons
-    "dagger":         {"name": "Poison Tips",      "icon": "☠", "color": (80, 220, 80),   "effect": "damage",   "value": 8,  "desc": "+8 damage — venomous strikes"},
-    "cyber_bow":      {"name": "Rapid Volley",     "icon": "➤", "color": (100, 200, 255), "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster arrows"},
-    "pulse_rifle":    {"name": "Overcharged Pulse", "icon": "⚡", "color": (255, 80, 200),  "effect": "damage",   "value": 10, "desc": "+10 damage — supercharged pulses"},
-    "scatter_shot":   {"name": "Wide Scatter",     "icon": "✧", "color": (255, 200, 100), "effect": "range",    "value": 15, "desc": "+15 range — wider scatter pattern"},
-    "ricochet_disc":       {"name": "Multi-Bounce",      "icon": "◎", "color": (255, 160, 0),   "effect": "damage",   "value": 10, "desc": "+10 damage — extra ricochet hits"},
-    "explosive_crossbow":  {"name": "Warhead Tips",      "icon": "💥", "color": (255, 120, 30),  "effect": "damage",   "value": 14, "desc": "+14 damage — bigger detonation"},
-    "burst_crossbow":      {"name": "Rapid Chamber",     "icon": "➤", "color": (100, 220, 255),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster burst cycle"},
+    "dagger": [
+        {"name": "Poison Tips",    "icon": "D", "color": (80, 220, 80),   "effect": "damage",   "value": 9,  "desc": "+9 damage — venomous strikes"},
+        {"name": "Rapid Release",  "icon": "C", "color": (60, 200, 60),   "effect": "cooldown", "value": 65, "desc": "-65ms cooldown — faster throw cycle"},
+    ],
+    "cyber_bow": [
+        {"name": "Rapid Volley",   "icon": "C", "color": (100, 200, 255), "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster draw"},
+        {"name": "Piercing Light", "icon": "D", "color": (80, 220, 255),  "effect": "damage",   "value": 12, "desc": "+12 damage — laser-sharp arrow"},
+    ],
+    "pulse_rifle": [
+        {"name": "Overcharged Pulse","icon":"D","color": (255, 80, 200),  "effect": "damage",   "value": 10, "desc": "+10 damage — supercharged pulses"},
+        {"name": "Heat Sink",      "icon": "C", "color": (200, 50, 180),  "effect": "cooldown", "value": 50, "desc": "-50ms cooldown — improved cooling"},
+    ],
+    "scatter_shot": [
+        {"name": "Wide Scatter",   "icon": "R", "color": (255, 200, 100), "effect": "range",    "value": 18, "desc": "+18 range — wider spread"},
+        {"name": "Pellet Storm",   "icon": "D", "color": (220, 170, 80),  "effect": "damage",   "value": 8,  "desc": "+8 damage — heavier pellets"},
+    ],
+    "ricochet_disc": [
+        {"name": "Multi-Bounce",   "icon": "D", "color": (255, 160, 0),   "effect": "damage",   "value": 11, "desc": "+11 damage — extra ricochet hits"},
+        {"name": "Gyro Spin",      "icon": "C", "color": (220, 140, 0),   "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster disc cycle"},
+    ],
+    "explosive_crossbow": [
+        {"name": "Warhead Tips",   "icon": "D", "color": (255, 120, 30),  "effect": "damage",   "value": 14, "desc": "+14 damage — bigger detonation"},
+        {"name": "Short Fuse",     "icon": "C", "color": (220, 100, 20),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — primed and ready"},
+    ],
+    "burst_crossbow": [
+        {"name": "Rapid Chamber",  "icon": "C", "color": (100, 220, 255), "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster burst cycle"},
+        {"name": "Burst Cluster",  "icon": "D", "color": (80, 200, 255),  "effect": "damage",   "value": 10, "desc": "+10 damage — tighter burst cluster"},
+    ],
     # Jester weapons
-    "rubber_chicken": {"name": "Extra Bouncy",     "icon": "🐔", "color": (255, 220, 50),  "effect": "damage",   "value": 10, "desc": "+10 damage — bouncier chicken"},
-    "banana_rang":    {"name": "Banana Split",     "icon": "🍌", "color": (255, 255, 80),  "effect": "range",    "value": 15, "desc": "+15 range — wider banana arc"},
-    "joy_buzzer":     {"name": "Megavolt Buzz",    "icon": "⚡", "color": (255, 255, 0),   "effect": "cooldown", "value": 80, "desc": "-80ms cooldown — rapid buzzing"},
-    "pie_launcher":   {"name": "Cream Explosion",  "icon": "◉", "color": (255, 180, 200), "effect": "damage",   "value": 12, "desc": "+12 damage — bigger pie splash"},
-    "confetti_grenade":{"name": "Party Bomb",      "icon": "✦", "color": (255, 100, 255), "effect": "damage",   "value": 14, "desc": "+14 damage — extra confetti boom"},
-    "jack_in_box":    {"name": "Spring Loaded",    "icon": "★", "color": (200, 80, 255),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster spring"},
+    "rubber_chicken": [
+        {"name": "Extra Bouncy",   "icon": "D", "color": (255, 220, 50),  "effect": "damage",   "value": 10, "desc": "+10 damage — bouncier chicken"},
+        {"name": "Turbo Cluck",    "icon": "C", "color": (220, 200, 40),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — rapid clucking"},
+    ],
+    "banana_rang": [
+        {"name": "Banana Split",   "icon": "R", "color": (255, 255, 80),  "effect": "range",    "value": 18, "desc": "+18 range — wider banana arc"},
+        {"name": "Peel Out",       "icon": "C", "color": (220, 220, 60),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster peel cycle"},
+    ],
+    "joy_buzzer": [
+        {"name": "Megavolt Buzz",  "icon": "C", "color": (255, 255, 0),   "effect": "cooldown", "value": 80, "desc": "-80ms cooldown — rapid buzzing"},
+        {"name": "Chain Shock",    "icon": "D", "color": (220, 220, 0),   "effect": "damage",   "value": 11, "desc": "+11 damage — arcing shock damage"},
+    ],
+    "pie_launcher": [
+        {"name": "Cream Explosion","icon": "D", "color": (255, 180, 200), "effect": "damage",   "value": 13, "desc": "+13 damage — bigger pie splash"},
+        {"name": "Rapid Reload",   "icon": "C", "color": (220, 150, 180), "effect": "cooldown", "value": 75, "desc": "-75ms cooldown — pre-loaded pies"},
+    ],
+    "confetti_grenade": [
+        {"name": "Party Bomb",     "icon": "D", "color": (255, 100, 255), "effect": "damage",   "value": 14, "desc": "+14 damage — explosive confetti boom"},
+        {"name": "Rapid Fire",     "icon": "C", "color": (220, 80, 220),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — party non-stop"},
+    ],
+    "jack_in_box": [
+        {"name": "Spring Loaded",  "icon": "C", "color": (200, 80, 255),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster spring"},
+        {"name": "Pop Goes Boom",  "icon": "D", "color": (180, 60, 220),  "effect": "damage",   "value": 12, "desc": "+12 damage — surprise explosion"},
+    ],
 }
 
 
@@ -74,7 +139,8 @@ class LevelUpScreen:
 
     def activate(self, player_weapon_name: str, player_class: str = "knight",
                  player_passives: list = None, base_damage: int = 20,
-                 current_weapon: dict = None, upgrade_tiers: dict = None):
+                 current_weapon: dict = None, upgrade_tiers: dict = None,
+                 arsenal: list = None):
         """Generate 3 random choices: mix of stat upgrades, passives, and weapon swaps."""
         self.active = True
         self.selected = 0
@@ -119,20 +185,30 @@ class LevelUpScreen:
             entry["base_name"] = u["name"]
             pool.append(entry)
 
-        # Add weapon-specific upgrade for current weapon (if available and not already taken)
-        if player_weapon_name in WEAPON_UPGRADES:
-            wu = WEAPON_UPGRADES[player_weapon_name]
-            wu_name = wu["name"]
-            current_tier = tiers.get(wu_name, 0)
-            if current_tier < 3:
+        # Add weapon-specific upgrades for current weapon AND any arsenal weapons
+        # (2 upgrade slots per weapon, tiered up to 3 each — they buff the player globally)
+        seen_weapon_keys = set(player_passives or [])  # reuse to avoid duplicate weapon upg names
+        weapons_to_check = ([player_weapon_name] +
+                            [k for k in (arsenal or []) if k != player_weapon_name])
+        for wk in weapons_to_check:
+            if wk not in WEAPON_UPGRADES:
+                continue
+            for wu in WEAPON_UPGRADES[wk]:
+                wu_name = wu["name"]
+                if wu_name in seen_weapon_keys:
+                    continue
+                current_tier = tiers.get(wu_name, 0)
+                if current_tier >= 3:
+                    seen_weapon_keys.add(wu_name)
+                    continue
                 next_tier = current_tier + 1
                 tier_mult = {1: 1.0, 2: 1.5, 3: 2.0}[next_tier]
+                tier_label = TIER_NAMES[next_tier]
                 entry = dict(wu)
                 entry["type"] = "weapon_upgrade"
                 entry["tier"] = next_tier
                 entry["base_name"] = wu_name
                 if next_tier > 1:
-                    tier_label = {1: "I", 2: "II", 3: "III"}[next_tier]
                     entry["name"] = f"{wu_name} {tier_label}"
                     scaled_val = wu["value"]
                     if isinstance(scaled_val, (int, float)) and scaled_val != 0:
@@ -140,6 +216,7 @@ class LevelUpScreen:
                     entry["value"] = scaled_val
                     entry["desc"] = f"[Tier {tier_label}] {wu['desc']}"
                 pool.append(entry)
+                seen_weapon_keys.add(wu_name)
 
         # Add 1-2 weapon options (class-appropriate weapons the player doesn't currently have)
         available_weapons = [k for k in WEAPONS

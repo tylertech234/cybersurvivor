@@ -147,8 +147,11 @@ jobs:
   # ── Publish to itch.io via butler ────────────────────────────────────────────
   publish-itch:
     needs: [build, build-web]
-    # Run on tag pushes OR manual dispatch
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    # Run on tag pushes, manual dispatch, OR any push to main
+    if: >
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'workflow_dispatch' ||
+      github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:

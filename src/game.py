@@ -105,6 +105,15 @@ class Game:
         # Hide OS cursor — we draw our own
         pygame.mouse.set_visible(False)
 
+        # Controller / gamepad support
+        pygame.joystick.init()
+        self._joystick: object = None
+        self._ctrl_aim_x = 0.0
+        self._ctrl_aim_y = 0.0
+        if pygame.joystick.get_count() > 0:
+            self._joystick = pygame.joystick.Joystick(0)
+            self._joystick.init()
+
         # Debug / dev tools
         self.debug_menu = DebugMenu()
         self.debug_overlay = DebugOverlay()
@@ -650,6 +659,37 @@ class Game:
                     self._fire_super_skill()
                 self._super_charging = False
 
+            # ── Gamepad: hot-plug ──
+            if event.type == pygame.JOYDEVICEADDED:
+                self._joystick = pygame.joystick.Joystick(event.device_index)
+                self._joystick.init()
+            if event.type == pygame.JOYDEVICEREMOVED:
+                self._joystick = None
+                self._ctrl_aim_x = 0.0
+                self._ctrl_aim_y = 0.0
+
+            # ── Gamepad buttons ──
+            if event.type == pygame.JOYBUTTONDOWN and not self._player_dying and not self.game_over:
+                now = pygame.time.get_ticks()
+                if event.button == 0:  # A / Cross — attack
+                    if self.player.try_attack(now):
+                        if not fire_player_projectile(self.player, self.player_projectiles, self.sounds):
+                            self.sounds.play(self.player.weapon.get("sound", "swing"))
+                            self.animations.add_screen_shake(1)
+                        else:
+                            self._maybe_queue_burst(now)
+                elif event.button == 1:  # B / Circle — dash
+                    if self.player.try_dash(now):
+                        self.sounds.play("dash")
+                elif event.button in (5, 7):  # RB / RT — super skill charge
+                    if self.player.energy >= self.player.max_energy:
+                        self._super_charging = True
+            if event.type == pygame.JOYBUTTONUP:
+                if event.button in (5, 7):
+                    if self._super_charging and self.player.energy >= self.player.max_energy:
+                        self._fire_super_skill()
+                    self._super_charging = False
+
     def _apply_levelup_choice(self, choice: dict):
         p = self.player
         effect = choice["effect"]
@@ -763,14 +803,20 @@ class Game:
 
         if cls == "archer":
             # STORM BARRAGE — 5 massive explosive arrows spread toward cursor
-            mx, my = pygame.mouse.get_pos()
-            world_x = mx + self.camera.x
-            world_y = my + self.camera.y
-            dx = world_x - p.x
-            dy = world_y - p.y
-            length = math.hypot(dx, dy)
-            if length > 0:
-                dx, dy = dx / length, dy / length
+            _DEAD = 0.15
+            if self._joystick and (abs(self._ctrl_aim_x) > _DEAD or abs(self._ctrl_aim_y) > _DEAD):
+                aim_l = math.hypot(self._ctrl_aim_x, self._ctrl_aim_y)
+                dx = self._ctrl_aim_x / aim_l if aim_l > 0 else 1.0
+                dy = self._ctrl_aim_y / aim_l if aim_l > 0 else 0.0
+            else:
+                mx, my = pygame.mouse.get_pos()
+                world_x = mx / CAMERA_ZOOM + self.camera.x
+                world_y = my / CAMERA_ZOOM + self.camera.y
+                dx = world_x - p.x
+                dy = world_y - p.y
+                length = math.hypot(dx, dy)
+                if length > 0:
+                    dx, dy = dx / length, dy / length
             damage = int(p.damage * p.damage_multiplier * 25)
             base_angle = math.atan2(dy, dx)
             for offset in (-0.25, -0.12, 0.0, 0.12, 0.25):
@@ -935,6 +981,36 @@ class Game:
         world_w = self.game_map.pixel_width
         world_h = self.game_map.pixel_height
 
+        # ── Controller axis reading ──
+        if self._joystick:
+            _DEAD = 0.15
+            try:
+                _lx = self._joystick.get_axis(0)
+                _ly = self._joystick.get_axis(1)
+                _rx = self._joystick.get_axis(2) if self._joystick.get_numaxes() > 2 else 0.0
+                _ry = self._joystick.get_axis(3) if self._joystick.get_numaxes() > 3 else 0.0
+            except Exception:
+                _lx = _ly = _rx = _ry = 0.0
+            # Left stick → merge into movement keys
+            if abs(_lx) > _DEAD or abs(_ly) > _DEAD:
+                _base_keys = keys
+                _lx_c, _ly_c = _lx, _ly
+                class _MergedKeys:
+                    def __getitem__(self_, k):
+                        if k in (pygame.K_w, pygame.K_UP):    return 1 if _ly_c < -_DEAD else _base_keys[k]
+                        if k in (pygame.K_s, pygame.K_DOWN):  return 1 if _ly_c > _DEAD  else _base_keys[k]
+                        if k in (pygame.K_a, pygame.K_LEFT):  return 1 if _lx_c < -_DEAD else _base_keys[k]
+                        if k in (pygame.K_d, pygame.K_RIGHT): return 1 if _lx_c > _DEAD  else _base_keys[k]
+                        return _base_keys[k]
+                keys = _MergedKeys()
+            # Right stick → store aim direction for mouse-aim override below
+            if abs(_rx) > _DEAD or abs(_ry) > _DEAD:
+                self._ctrl_aim_x = _rx
+                self._ctrl_aim_y = _ry
+            else:
+                self._ctrl_aim_x = 0.0
+                self._ctrl_aim_y = 0.0
+
         # During player death animation, freeze player input (no movement)
         _dying_keys = None
         if self._player_dying:
@@ -958,18 +1034,25 @@ class Game:
                 self._nano_regen_timer = now
                 self.player.hp = min(self.player.max_hp, self.player.hp + 1)
 
-        # Mouse aiming — player faces toward mouse cursor
-        mx, my = pygame.mouse.get_pos()
-        # Convert screen mouse pos to world coords
-        cx, cy = self.camera.x, self.camera.y
-        world_mx = mx + cx
-        world_my = my + cy
-        aim_dx = world_mx - self.player.x
-        aim_dy = world_my - self.player.y
-        aim_len = math.hypot(aim_dx, aim_dy)
-        if aim_len > 1.0:
-            self.player.facing_x = aim_dx / aim_len
-            self.player.facing_y = aim_dy / aim_len
+        # Aiming — controller right stick takes priority, then mouse
+        _DEAD = 0.15
+        if self._joystick and (abs(self._ctrl_aim_x) > _DEAD or abs(self._ctrl_aim_y) > _DEAD):
+            aim_len = math.hypot(self._ctrl_aim_x, self._ctrl_aim_y)
+            if aim_len > 0.0:
+                self.player.facing_x = self._ctrl_aim_x / aim_len
+                self.player.facing_y = self._ctrl_aim_y / aim_len
+        else:
+            # Mouse aiming: unzoom screen coords → viewport coords → world coords
+            mx, my = pygame.mouse.get_pos()
+            cx, cy = self.camera.x, self.camera.y
+            world_mx = mx / CAMERA_ZOOM + cx
+            world_my = my / CAMERA_ZOOM + cy
+            aim_dx = world_mx - self.player.x
+            aim_dy = world_my - self.player.y
+            aim_len = math.hypot(aim_dx, aim_dy)
+            if aim_len > 1.0:
+                self.player.facing_x = aim_dx / aim_len
+                self.player.facing_y = aim_dy / aim_len
         half = self.player.size // 2
         self.player.x, self.player.y = self.environment.collide_entity(
             self.player.x, self.player.y, half)

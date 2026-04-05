@@ -437,7 +437,7 @@ class Enemy:
         if self.hp <= 0:
             self.alive = False
             self._death_time = now
-            self._corpse_until = now + 1800  # linger 1.8s as corpse
+            self._corpse_until = now + 6000  # linger 6s as corpse
         # Apply knockback (reduced for bosses)
         length = math.hypot(knockback_x, knockback_y)
         if length > 0:
@@ -462,7 +462,7 @@ class Enemy:
             if self.hp <= 0:
                 self.alive = False
                 self._death_time = now
-                self._corpse_until = now + 1800
+                self._corpse_until = now + 6000
                 return
 
         speed_mult = self.statuses.get_speed_mult()

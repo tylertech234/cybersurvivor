@@ -598,7 +598,7 @@ class Game:
                     pygame.image.save(self.screen, _path)
                     self.toasts.show("Screenshot saved", os.path.basename(_path), (100, 220, 255))
                 # Attack — Space or Left click proxy via J key
-                if event.key in (pygame.K_SPACE, pygame.K_j):
+                if event.key in (pygame.K_SPACE, pygame.K_j) and not self._player_dying and not self.game_over:
                     if self.player.try_attack(now):
                         if not fire_player_projectile(self.player, self.player_projectiles, self.sounds):
                             self.sounds.play(self.player.weapon.get("sound", "swing"))
@@ -610,7 +610,7 @@ class Game:
                     if self.player.try_dash(now):
                         self.sounds.play("dash")
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.game_over:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self._player_dying and not self.game_over:
                 now = pygame.time.get_ticks()
                 if self.player.try_attack(now):
                     if not fire_player_projectile(self.player, self.player_projectiles, self.sounds):
@@ -620,7 +620,7 @@ class Game:
                         self._maybe_queue_burst(now)
 
             # Right-click: start super skill charge when energy is full
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and not self.game_over:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and not self._player_dying and not self.game_over:
                 if self.player.energy >= self.player.max_energy:
                     self._super_charging = True
 
@@ -875,7 +875,7 @@ class Game:
             if not (self.levelup_screen.active or self.chest_reward.active
                     or self.passive_swap.active or self.weapon_swap.active
                     or self.arsenal_screen.active
-                    or self.paused or self.game_over):
+                    or self.paused or self._player_dying or self.game_over):
                 if self.player.try_attack(now):
                     from src.systems.game_actions import fire_player_projectile as _fpp
                     if not _fpp(self.player, self.player_projectiles, self.sounds):

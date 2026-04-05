@@ -103,6 +103,7 @@ class Game:
         self.debug_menu = DebugMenu()
         self.debug_overlay = DebugOverlay()
         self.auto_attack = False
+        self._burst_queue: list[tuple[int, float, float]] = []  # (fire_at_ms, fx, fy)
         self.paused = False
         self._pause_selected = 0
         self._pause_options = ["Resume", "Switch Weapon", "Settings", "Quit to Menu", "Quit Game"]
@@ -602,6 +603,8 @@ class Game:
                         if not fire_player_projectile(self.player, self.player_projectiles, self.sounds):
                             self.sounds.play(self.player.weapon.get("sound", "swing"))
                             self.animations.add_screen_shake(1)
+                        else:
+                            self._maybe_queue_burst(now)
                 # Dash — Shift or K
                 if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_k):
                     if self.player.try_dash(now):
@@ -613,6 +616,8 @@ class Game:
                     if not fire_player_projectile(self.player, self.player_projectiles, self.sounds):
                         self.sounds.play(self.player.weapon.get("sound", "swing"))
                         self.animations.add_screen_shake(1)
+                    else:
+                        self._maybe_queue_burst(now)
 
             # Right-click: start super skill charge when energy is full
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3 and not self.game_over:
@@ -833,6 +838,17 @@ class Game:
     # ------------------------------------------------------------------ update
     _ZONE_TOAST_COLORS = {"wasteland": (80, 180, 80), "city": (100, 140, 220), "abyss": (160, 80, 240)}
 
+    def _maybe_queue_burst(self, now: int) -> None:
+        """Queue follow-up burst shots for weapons with burst_count > 1."""
+        w = self.player.weapon
+        burst_count = w.get("burst_count", 1)
+        if burst_count <= 1:
+            return
+        delay = w.get("burst_delay_ms", 120)
+        fx, fy = self.player.facing_x, self.player.facing_y
+        for i in range(1, burst_count):
+            self._burst_queue.append((now + i * delay, fx, fy))
+
     def _record_kill_compendium(self, enemy) -> None:
         """Record enemy kill; show toast on first encounter."""
         if self.compendium.on_kill(enemy.enemy_type, self.spawner.wave):
@@ -841,6 +857,19 @@ class Game:
             self.toasts.show(f"NEW: {name}", "Added to Compendium", zc)
 
     def _update(self, dt: float, now: int):
+        # Burst fire queue (e.g. double dagger in quick succession)
+        for _bt, _bfx, _bfy in list(self._burst_queue):
+            if now >= _bt:
+                self._burst_queue.remove((_bt, _bfx, _bfy))
+                _bw = self.player.weapon
+                if _bw.get("projectile") and not _bw.get("orbiter") and not _bw.get("grenade"):
+                    _bdmg = int(self.player.damage * _bw["damage_mult"] * self.player.damage_multiplier)
+                    self.player_projectiles.spawn_daggers(
+                        self.player.x, self.player.y, _bfx, _bfy, _bdmg,
+                        1, _bw.get("proj_speed", 7.0), _bw.get("proj_lifetime", 800),
+                        _bw.get("proj_visual", "dagger"), _bw.get("piercing", False))
+                    self.sounds.play("throw")
+
         # Auto-attack: fire at fastest interval when toggled or mouse held
         if self.auto_attack or pygame.mouse.get_pressed()[0]:
             if not (self.levelup_screen.active or self.chest_reward.active
@@ -852,6 +881,8 @@ class Game:
                     if not _fpp(self.player, self.player_projectiles, self.sounds):
                         self.sounds.play(self.player.weapon.get("sound", "swing"))
                         self.animations.add_screen_shake(1)
+                    else:
+                        self._maybe_queue_burst(now)
 
         # Debug cheats: god mode and no cooldown
         if self._debug_mode:

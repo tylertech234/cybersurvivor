@@ -123,15 +123,15 @@ class PickupSystem:
                 dist = math.hypot(dx, dy)
                 if dist > 0:
                     if magnet:
-                        # Enhanced magnetic pull: everything in a wide radius
-                        if dist < 680:
-                            pull = min(9.0, 680 / max(dist, 1))
+                        # Vacuum cleaner: all pickups in a huge radius snap toward player
+                        if dist < 900:
+                            pull = min(22.0, 900 / max(dist, 1))
                             p.x += (dx / dist) * pull
                             p.y += (dy / dist) * pull
-                    elif effect in ("xp", "coin"):
-                        # Baseline attraction: XP and coins always drift toward player
-                        if dist < 240:
-                            pull = min(3.0, 240 / max(dist, 1))
+                    else:
+                        # Baseline attraction: ALL pickups drift toward player
+                        if dist < 300:
+                            pull = min(7.0, 300 / max(dist, 1))
                             p.x += (dx / dist) * pull
                             p.y += (dy / dist) * pull
             if p.alive and p.rect.colliderect(player.rect):

@@ -28,7 +28,7 @@ ENEMY_TYPES = {
         "xp_value": 28, "status_on_hit": "bleed",
     },
     "mega_cyber_deer": {
-        "hp": 750, "speed": 1.9, "size": 56,
+        "hp": 1125, "speed": 1.9, "size": 56,
         "damage": 26, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
         "xp_value": 180, "status_on_hit": None,
@@ -41,14 +41,14 @@ ENEMY_TYPES = {
         "xp_value": 22, "status_on_hit": None,
     },
     "iron_sentinel": {
-        "hp": 1000, "speed": 1.5, "size": 56,
+        "hp": 1500, "speed": 1.5, "size": 56,
         "damage": 25, "shoot_range": 350,
         "shoot_cooldown": 900, "bullet_damage": 16,
         "xp_value": 200, "status_on_hit": "fire",
         "special": "ground_slam",
     },
     "supreme_d_lek": {
-        "hp": 3125, "speed": 1.2, "size": 72,
+        "hp": 4700, "speed": 1.2, "size": 72,
         "damage": 40, "shoot_range": 400,
         "shoot_cooldown": 600, "bullet_damage": 25,
         "xp_value": 800, "status_on_hit": "bleed",
@@ -110,14 +110,14 @@ ENEMY_TYPES = {
         "xp_value": 48, "status_on_hit": "poison",
     },
     "street_preacher": {
-        "hp": 1500, "speed": 1.4, "size": 52,
+        "hp": 2250, "speed": 1.4, "size": 52,
         "damage": 20, "shoot_range": 320,
         "shoot_cooldown": 1000, "bullet_damage": 16,
         "xp_value": 250, "status_on_hit": "fire",
         "special": "flame_pillar",
     },
     "eldritch_horror": {
-        "hp": 4375, "speed": 1.0, "size": 80,
+        "hp": 6560, "speed": 1.0, "size": 80,
         "damage": 35, "shoot_range": 380,
         "shoot_cooldown": 700, "bullet_damage": 22,
         "xp_value": 1000, "status_on_hit": "bleed",
@@ -161,14 +161,14 @@ ENEMY_TYPES = {
         "xp_value": 38, "status_on_hit": "poison",
     },
     "architect": {
-        "hp": 1875, "speed": 1.2, "size": 56,
+        "hp": 2800, "speed": 1.2, "size": 56,
         "damage": 22, "shoot_range": 340,
         "shoot_cooldown": 900, "bullet_damage": 18,
         "xp_value": 300, "status_on_hit": "slow",
         "special": "void_rift",
     },
     "nexus": {
-        "hp": 6250, "speed": 0.8, "size": 90,
+        "hp": 9375, "speed": 0.8, "size": 90,
         "damage": 45, "shoot_range": 420,
         "shoot_cooldown": 500, "bullet_damage": 28,
         "xp_value": 1500, "status_on_hit": "bleed",
@@ -503,6 +503,16 @@ class Enemy:
         if self.enemy_type == "spitter" and dist < 120 and dist > 10:
             self.x -= (dx / dist) * effective_speed * 2.0
             self.y -= (dy / dist) * effective_speed * 2.0
+
+        # Ranged bosses: maintain distance — retreat + strafe when player charges in
+        if self.is_boss and self.shoot_range > 0 and 0 < dist < 260:
+            flee_speed = effective_speed * 1.8
+            self.x -= (dx / dist) * flee_speed
+            self.y -= (dy / dist) * flee_speed
+            # Lateral strafe while retreating so they don't get cornered
+            strafe_bob = math.sin(now * 0.004 + self.anim_offset) * effective_speed * 0.9
+            self.x += -self.face_y * strafe_bob
+            self.y += self.face_x * strafe_bob
 
         # Void wisp: random lateral burst-dashes every ~700ms
         if self.enemy_type == "void_wisp":

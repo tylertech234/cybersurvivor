@@ -390,47 +390,57 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_chicken(self) -> pygame.mixer.Sound:
-        # Rubber chicken honk - nasal squawky waveform with comedy vibrato
+        """Squeaky rubber toy AHHH — sharp squeeze onset, nasal AHHH sustain,
+        trailing huhuhu shimmy decay.  Rapid hits produce A-ah-ah-ah naturally."""
         rate = 22050
-        n = int(rate * 0.35)
+        n = int(rate * 0.45)   # 450 ms total
         buf = array.array("h")
         for i in range(n):
             t = i / rate
             pos = i / n
-            # Envelope: quick honk attack, sustain, squeaky decay
-            if pos < 0.03:
-                env = pos / 0.03
-            elif pos < 0.15:
+            # Envelope: instant squeeze attack, full AHHH body, slow huhuhu tail
+            if pos < 0.05:
+                env = pos / 0.05
+            elif pos < 0.35:
                 env = 1.0
-            elif pos < 0.5:
-                env = 1.0 - (pos - 0.15) * 0.3
+            elif pos < 0.65:
+                env = 1.0 - (pos - 0.35) * 0.5
             else:
-                env = max(0, (1.0 - (pos - 0.5) / 0.5) ** 1.5)
-            # Base frequency: big honk up then down
-            base_freq = 280 + 350 * math.sin(pos * math.pi * 0.7)
-            # Fast nasal vibrato
-            vibrato = math.sin(t * 45 * 2 * math.pi) * 120
-            # Comedy wobble
-            wobble = math.sin(t * 12 * 2 * math.pi) * 40
-            freq = base_freq + vibrato + wobble
-            # Nasal square-ish waveform (not pure square)
+                env = max(0.0, ((1.0 - pos) / 0.35) ** 2)
+            # Pitch: starts high on squeeze (AHHH!), settles, drops again on release
+            base_freq = 520.0 - 200.0 * min(1.0, pos / 0.30)   # 520→320 over first 30 %
+            if pos > 0.50:
+                base_freq -= 120.0 * (pos - 0.50) / 0.50        # 320→200 in tail
+            # Vibrato: mild in sustain, fast "hu-hu-hu" wobble in tail
+            if pos > 0.55:
+                vibrato = math.sin(t * (18.0 + 12.0 * pos) * 2 * math.pi) * 60.0
+            else:
+                vibrato = math.sin(t * 8.0 * 2 * math.pi) * 25.0
+            freq = max(80.0, base_freq + vibrato)
+            # Nasal duty-cycle waveform
             phase = (t * freq) % 1.0
-            if phase < 0.3:
+            if phase < 0.25:
                 wave = 1.0
-            elif phase < 0.5:
-                wave = -0.5
-            elif phase < 0.7:
-                wave = -0.3
+            elif phase < 0.45:
+                wave = -0.4
+            elif phase < 0.55:
+                wave = -0.8
             else:
-                wave = 0.2
-            # Nasal overtone at 3x frequency
-            overtone = math.sin(2 * math.pi * freq * 3 * t) * 0.25
-            # Slight noise for rubber texture
-            noise = (((i * 13 + 5) * 1103515245 + 12345) >> 16) & 0x7FFF
-            n_val = (noise / 16384.0 - 1.0) * 0.06
-            sample = int((wave * 0.4 + overtone + n_val) * env * 0.6 * 32767)
+                wave = 0.1
+            # Nasal overtones that give the AHH formant colour
+            overtone = math.sin(2 * math.pi * freq * 2.5 * t) * 0.30
+            overtone2 = math.sin(2 * math.pi * freq * 4.0 * t) * 0.15 * max(0.0, 1.0 - pos * 2)
+            # Squeeze click transient at very start
+            if pos < 0.02:
+                click_raw = (((i * 31337 + 7) * 1103515245 + 12345) >> 16) & 0x7FFF
+                click = (click_raw / 16384.0 - 1.0) * 0.35
+            else:
+                click = 0.0
+            sample = int((wave * 0.40 + overtone + overtone2 + click) * env * 0.70 * 32767)
             buf.append(max(-32768, min(32767, sample)))
-        return pygame.mixer.Sound(buffer=buf)
+        snd = pygame.mixer.Sound(buffer=buf)
+        snd.set_volume(0.90)
+        return snd
 
     def _make_confetti_boom(self) -> pygame.mixer.Sound:
         """Comical pop-explosion with party horn and sparkle."""

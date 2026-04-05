@@ -272,16 +272,18 @@ class Player:
 
         half = self.size // 2
 
-        # Dash trail — energy streaks
+        # Dash trail — energy streaks (reuse single surface)
         if self.is_dashing:
+            ts = self.size
+            trail_surf = pygame.Surface((ts, ts + 6), pygame.SRCALPHA)
             for i in range(4):
                 t = (i + 1) * 7
                 tx = sx - int(self.dash_dx * t)
                 ty = sy - int(self.dash_dy * t)
-                trail_surf = pygame.Surface((self.size, self.size + 6), pygame.SRCALPHA)
+                trail_surf.fill((0, 0, 0, 0))
                 a = 55 - i * 14
                 pygame.draw.rect(trail_surf, (*trim_color, max(0, a)),
-                                 (4, 2, self.size - 8, self.size + 2), border_radius=4)
+                                 (4, 2, ts - 8, ts + 2), border_radius=4)
                 surface.blit(trail_surf, (tx - half, ty - half - 3))
 
         # ---- Cyberknight body ----

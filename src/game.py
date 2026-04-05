@@ -19,7 +19,7 @@ from src.settings import (
     TILE_SIZE, MAP_WIDTH, MAP_HEIGHT,
     ENEMY_DARKNESS_HP_BONUS, XP_PER_KILL, XP_DARKNESS_BONUS,
     DROP_CHANCE, MAX_PASSIVES,
-    SUPABASE_URL, SUPABASE_ANON_KEY,
+    SUPABASE_URL, SUPABASE_ANON_KEY, DATA_DIR,
 )
 from src.entities.player import Player
 from src.systems.combat import CombatSystem
@@ -240,6 +240,7 @@ class Game:
         # Damage vignette feedback
         self._last_damage_time = 0
         self._last_damage_pct = 0.0
+        self._dmg_vig_cache = None   # (bucket, Surface)
         # Kill streak combo feedback
         self._kill_streak = 0
         self._kill_streak_time = 0
@@ -587,7 +588,7 @@ class Game:
                 # Screenshot — F9
                 if event.key == pygame.K_F9:
                     _ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                    _shots_dir = os.path.join(os.path.dirname(__file__), "..", "screenshots")
+                    _shots_dir = os.path.join(DATA_DIR, "screenshots")
                     os.makedirs(_shots_dir, exist_ok=True)
                     _path = os.path.join(_shots_dir, f"screenshot_{_ts}.png")
                     pygame.image.save(self.screen, _path)
@@ -1723,27 +1724,30 @@ class Game:
         _VIG_DUR = 700
         if vignette_age < _VIG_DUR and not self.game_over:
             vfade = max(0.0, 1.0 - vignette_age / _VIG_DUR)
-            # Peak alpha scales with damage severity: tiny chip = subtle, big hit = vivid
             dmg_pct = self._last_damage_pct
             peak_alpha = int((18 + dmg_pct * 145) * vfade)
             if peak_alpha > 1:
-                vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-                steps = 40
-                half = min(SCREEN_WIDTH, SCREEN_HEIGHT) // 2
-                for i in range(steps):
-                    frac = (1.0 - i / steps) ** 1.8  # steep rolloff toward center
-                    a = int(peak_alpha * frac)
-                    if a < 1:
-                        continue
-                    inset = i * half // steps
-                    rect = pygame.Rect(inset, inset,
-                                       SCREEN_WIDTH - 2 * inset,
-                                       SCREEN_HEIGHT - 2 * inset)
-                    if rect.width < 4 or rect.height < 4:
-                        break
-                    pygame.draw.rect(vig, (215, 10, 10, a), rect, 2,
-                                     border_radius=max(1, 28 - i // 2))
-                self.screen.blit(vig, (0, 0))
+                bucket = peak_alpha // 8
+                cached = self._dmg_vig_cache
+                if cached is None or cached[0] != bucket:
+                    vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+                    steps = 40
+                    half = min(SCREEN_WIDTH, SCREEN_HEIGHT) // 2
+                    for i in range(steps):
+                        frac = (1.0 - i / steps) ** 1.8
+                        a = int(peak_alpha * frac)
+                        if a < 1:
+                            continue
+                        inset = i * half // steps
+                        rect = pygame.Rect(inset, inset,
+                                           SCREEN_WIDTH - 2 * inset,
+                                           SCREEN_HEIGHT - 2 * inset)
+                        if rect.width < 4 or rect.height < 4:
+                            break
+                        pygame.draw.rect(vig, (215, 10, 10, a), rect, 2,
+                                         border_radius=max(1, 28 - i // 2))
+                    self._dmg_vig_cache = (bucket, vig)
+                self.screen.blit(self._dmg_vig_cache[1], (0, 0))
 
         # ---- Kill streak combo text ----
         streak_age = now_draw - self._kill_streak_time

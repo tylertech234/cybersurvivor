@@ -328,6 +328,7 @@ class Enemy:
         # Corpse linger — stays visible this many ms after death
         self._corpse_until = 0
         self._death_time = 0
+        self._corpse_surf = None  # cached at death
 
         # Animation
         self.anim_offset = random.uniform(0, math.tau)
@@ -763,17 +764,17 @@ class Enemy:
                 half = self.size // 2
                 cw = max(4, int(self.size * 1.2))
                 ch = max(3, int(self.size * 0.35))
-                csurf = pygame.Surface((cw, ch + 6), pygame.SRCALPHA)
-                # Dark flattened body ellipse
-                pygame.draw.ellipse(csurf, (40, 20, 20, alpha), (0, 0, cw, ch))
-                pygame.draw.ellipse(csurf, (80, 30, 30, alpha // 2), (0, 0, cw, ch), 2)
-                # Small spark bleed-out dots fading in first 600ms
-                if t < 0.33:
-                    spark_a = int(200 * (1.0 - t / 0.33))
+                # Build corpse surface once, reuse with fading alpha
+                if self._corpse_surf is None:
+                    csurf = pygame.Surface((cw, ch + 6), pygame.SRCALPHA)
+                    pygame.draw.ellipse(csurf, (40, 20, 20, 220), (0, 0, cw, ch))
+                    pygame.draw.ellipse(csurf, (80, 30, 30, 110), (0, 0, cw, ch), 2)
                     for i in range(3):
                         dot_x = cw // 2 + int((i - 1) * cw * 0.25)
-                        pygame.draw.circle(csurf, (200, 20, 20, spark_a), (dot_x, ch // 2), 2)
-                surface.blit(csurf, (sx - cw // 2, sy - ch // 2 + half // 2))
+                        pygame.draw.circle(csurf, (200, 20, 20, 200), (dot_x, ch // 2), 2)
+                    self._corpse_surf = csurf
+                self._corpse_surf.set_alpha(alpha)
+                surface.blit(self._corpse_surf, (sx - cw // 2, sy - ch // 2 + half // 2))
             return
         sx = int(self.x - camera_x)
         sy = int(self.y - camera_y)

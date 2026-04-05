@@ -742,7 +742,8 @@ class SoundManager:
         """Generate intense boss combat tracks per zone — cached separately."""
         import os
         import pickle
-        _cache_dir = os.path.join(os.path.dirname(__file__), '..', '..', '.cache')
+        from src.settings import DATA_DIR
+        _cache_dir = os.path.join(DATA_DIR, '.cache')
         _cache_file = os.path.join(_cache_dir, 'boss_music_v1.pkl')
         if os.path.exists(_cache_file):
             try:
@@ -967,7 +968,8 @@ class SoundManager:
         """Generate ambient base + combat layers for each zone."""
         import os
         import pickle
-        _cache_dir = os.path.join(os.path.dirname(__file__), '..', '..', '.cache')
+        from src.settings import DATA_DIR
+        _cache_dir = os.path.join(DATA_DIR, '.cache')
         _cache_file = os.path.join(_cache_dir, 'zone_music_v1.pkl')
         if os.path.exists(_cache_file):
             try:

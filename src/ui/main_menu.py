@@ -4,10 +4,10 @@ import pygame
 import math
 import json
 import os
-from src.settings import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW, BLACK, VERSION
+from src.settings import SCREEN_WIDTH, SCREEN_HEIGHT, WHITE, YELLOW, BLACK, VERSION, DATA_DIR
 
 
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "settings_save.json")
+SETTINGS_FILE = os.path.join(DATA_DIR, "settings_save.json")
 
 DEFAULT_SETTINGS = {
     "master_volume": 1.0,

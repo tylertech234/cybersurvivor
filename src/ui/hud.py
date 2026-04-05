@@ -129,16 +129,16 @@ class HUD:
 
         # Flame ripple along top of bar when full
         if ready:
+            _flame_h = 10
+            flame_surf = pygame.Surface((bar_w, _flame_h), pygame.SRCALPHA)
             for i in range(0, bar_w, 5):
                 flicker = math.sin(now * 0.009 + i * 0.4)
                 fh = int(3 + 3 * abs(flicker))
-                fx = bar_x + i
                 g_c = int(80 + 140 * abs(flicker))
                 for row in range(fh):
                     alpha = int(240 * (1.0 - row / (fh + 1)))
-                    glow_line = pygame.Surface((5, 1), pygame.SRCALPHA)
-                    glow_line.fill((255, g_c, 0, alpha))
-                    surface.blit(glow_line, (fx, bar_y + row))
+                    pygame.draw.rect(flame_surf, (255, g_c, 0, alpha), (i, row, 5, 1))
+            surface.blit(flame_surf, (bar_x, bar_y))
 
         # "SUPER" label with flash
         if ready:
@@ -243,10 +243,11 @@ class HUD:
             if i < len(display_passives):
                 key = display_passives[i]
                 icon, color = PASSIVE_INFO.get(key, ("?", (180, 180, 180)))
-                # Filled slot glow
-                glow = pygame.Surface((slot_size, slot_size), pygame.SRCALPHA)
+                # Filled slot glow — use set_alpha instead of SRCALPHA surface
                 alpha = 40 + int(15 * math.sin(now * 0.003 + i))
-                glow.fill((*color, alpha))
+                glow = pygame.Surface((slot_size, slot_size))
+                glow.fill(color)
+                glow.set_alpha(alpha)
                 surface.blit(glow, (x, y))
                 # Procedural icon
                 picon = get_passive_icon(key, slot_size - 6, color)
@@ -256,29 +257,28 @@ class HUD:
                                  border_radius=4)
 
     def _draw_low_hp_vignette(self, surface: pygame.Surface, player):
-        """Draw red screen edges when player HP is below 20%."""
+        """Draw red screen edges when player HP is below 20%.  Cached by intensity bucket."""
         if player.hp <= 0 or player.max_hp <= 0:
             return
         ratio = player.hp / player.max_hp
         if ratio >= 0.2:
             return
-        # Intensity: 0.0 at 20%, 1.0 at 0%
+        # Quantise to ~10 visual steps so we don't rebuild every frame
         intensity = 1.0 - (ratio / 0.2)
-        alpha = int(60 + 100 * intensity)
-        vignette = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        # Draw red gradient borders
-        edge = int(60 + 40 * intensity)
-        for i in range(edge):
-            a = int(alpha * (1.0 - i / edge))
-            # Top
-            pygame.draw.line(vignette, (180, 0, 0, a), (0, i), (SCREEN_WIDTH, i))
-            # Bottom
-            pygame.draw.line(vignette, (180, 0, 0, a), (0, SCREEN_HEIGHT - 1 - i), (SCREEN_WIDTH, SCREEN_HEIGHT - 1 - i))
-            # Left
-            pygame.draw.line(vignette, (180, 0, 0, a), (i, 0), (i, SCREEN_HEIGHT))
-            # Right
-            pygame.draw.line(vignette, (180, 0, 0, a), (SCREEN_WIDTH - 1 - i, 0), (SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT))
-        surface.blit(vignette, (0, 0))
+        bucket = int(intensity * 10)
+        if bucket != getattr(self, '_vig_bucket', -1):
+            self._vig_bucket = bucket
+            alpha = int(60 + 100 * intensity)
+            vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            edge = int(60 + 40 * intensity)
+            for i in range(edge):
+                a = int(alpha * (1.0 - i / edge))
+                pygame.draw.line(vig, (180, 0, 0, a), (0, i), (SCREEN_WIDTH, i))
+                pygame.draw.line(vig, (180, 0, 0, a), (0, SCREEN_HEIGHT - 1 - i), (SCREEN_WIDTH, SCREEN_HEIGHT - 1 - i))
+                pygame.draw.line(vig, (180, 0, 0, a), (i, 0), (i, SCREEN_HEIGHT))
+                pygame.draw.line(vig, (180, 0, 0, a), (SCREEN_WIDTH - 1 - i, 0), (SCREEN_WIDTH - 1 - i, SCREEN_HEIGHT))
+            self._vig_cache = vig
+        surface.blit(self._vig_cache, (0, 0))
 
     def draw_game_over(self, surface: pygame.Surface, wave: int, level: int,
                        kills: int = 0, legacy_points: int = 0):

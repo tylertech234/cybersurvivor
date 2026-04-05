@@ -10,6 +10,13 @@ FPS = 60
 TITLE = "Cyber Survivor"
 VERSION = "0.9.3"
 
+# -- User data directory (%APPDATA%/CyberSurvivor on Windows) --
+import os as _os
+DATA_DIR = _os.path.join(_os.environ.get("APPDATA", ""), "CyberSurvivor") \
+    if _os.name == "nt" \
+    else _os.path.join(_os.path.expanduser("~"), ".cyber_survivor")
+_os.makedirs(DATA_DIR, exist_ok=True)
+
 # -- Colors --
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)

@@ -475,75 +475,97 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_chicken(self) -> pygame.mixer.Sound:
-        """Rubber chicken — air-through-rubber-hole physics.
-        Sharp high gasp → brief squealing peak → long breathy dying yell.
-        3.0s.  Mostly flowing air noise; resonant pitch is secondary."""
-        rate = 22050
-        n    = int(rate * 3.0)
-        buf  = array.array("h")
-        ph   = 0.0
-        lp1  = 0.0   # 1st-order noise lowpass (bright hiss layer)
-        lp2  = 0.0   # 2nd-order noise lowpass (dull body-air layer)
+        """Rubber chicken — resonant cavity evacuation model.
+        White noise through a high-Q IIR bandpass filter whose centre
+        frequency sweeps from high → low as the hollow rubber body empties.
+        This is the same DSP as a Moog filter sweep, which is exactly what
+        gives rubber toys their rubbery 'talking' quality.
+        3.0 s: sharp squeeze → held peak → loooong dying exhale."""
+        rate   = 22050
+        n      = int(rate * 3.0)
+        buf    = array.array("h")
+
+        # IIR resonant bandpass state (2 samples of history)
+        bp_y1 = 0.0
+        bp_y2 = 0.0
+        # Secondary low-Q bandpass for "body air" layer
+        lp_y1 = 0.0
+        lp_y2 = 0.0
+
+        ph = 0.0  # thin tonal reed layer
 
         for i in range(n):
             pos = i / n
 
-            # ── Pitch envelope ──────────────────────────────────────────────
-            # 0–7%:   fast squeeze rise    180 → 720 Hz  (the gasp)
-            # 7–16%:  held peak            ~720 Hz
-            # 16–22%: pause / inflection   720 → 640 Hz  (slight dip)
-            # 22–100% long dying fall      640 → 50 Hz   (the yell)
-            if pos < 0.07:
-                freq = 180.0 + 540.0 * (pos / 0.07) ** 0.75   # fast concave rise
-            elif pos < 0.16:
-                freq = 720.0
-            elif pos < 0.22:
-                freq = 720.0 - 80.0 * ((pos - 0.16) / 0.06)
+            # ── Centre-frequency sweep ────────────────────────────────────
+            # 0–5%:   fast squeeze rise    150 → 1050 Hz
+            # 5–14%:  peak hold            ~1050 Hz
+            # 14–20%: inflection dip       1050 → 900 Hz
+            # 20–100% long cavity exhale   900 → 55 Hz
+            if pos < 0.05:
+                freq = 150.0 + 900.0 * (pos / 0.05) ** 0.55
+            elif pos < 0.14:
+                freq = 1050.0
+            elif pos < 0.20:
+                freq = 1050.0 - 150.0 * ((pos - 0.14) / 0.06)
             else:
-                r    = (pos - 0.22) / 0.78
-                freq = 640.0 * (1.0 - r * 0.922) ** 1.6       # 640 → 50 Hz
-            freq = max(48.0, freq)
+                r    = (pos - 0.20) / 0.80
+                freq = 900.0 * (1.0 - r * 0.939) ** 1.55   # 900 → 55 Hz
+            freq = max(45.0, freq)
 
-            # ── Amplitude envelope ──────────────────────────────────────────
-            # Snap attack → full peak → pause dip → very slow dying fade
-            if pos < 0.06:
-                amp = (pos / 0.06) ** 0.45      # sqrt-ish = snappy onset
-            elif pos < 0.16:
+            # ── Amplitude ────────────────────────────────────────────────
+            if pos < 0.04:
+                amp = (pos / 0.04) ** 0.35   # very snappy onset
+            elif pos < 0.15:
                 amp = 1.0
-            elif pos < 0.22:
-                amp = 1.0 - 0.42 * ((pos - 0.16) / 0.06)      # 1.0→0.58
+            elif pos < 0.20:
+                amp = 1.0 - 0.35 * ((pos - 0.15) / 0.05)   # 1.0 → 0.65
             else:
-                r   = (pos - 0.22) / 0.78
-                amp = 0.58 * (1.0 - r) ** 0.65  # still ~0.2 at 80% — slow bleed
+                # Long slow breath out — still ~18% at pos=0.85
+                r   = (pos - 0.20) / 0.80
+                amp = 0.65 * (1.0 - r) ** 0.60
 
-            # ── Tonal reed component (minority) ────────────────────────────
-            ph   = (ph + freq / rate) % 1.0
-            tone  = math.sin(2 * math.pi * ph) * 0.55
-            tone += math.sin(2 * math.pi * ph * 2.0) * 0.32   # honky 2nd harmonic
-            tone += math.sin(2 * math.pi * ph * 3.0) * 0.13
+            # ── White noise source ────────────────────────────────────────
+            raw = (((i * 1103515245 + 12345) >> 16) & 0x7FFF) / 16384.0 - 1.0
 
-            # ── Colored air noise (dominant component) ─────────────────────
-            # Two-pole lowpass on white noise → sounds like rushing air/breath
-            raw  = (((i * 1103515245 + 12345) >> 16) & 0x7FFF) / 16384.0 - 1.0
-            lp1  = lp1 * 0.62 + raw * 0.38    # ~3 kHz: bright hiss
-            lp2  = lp2 * 0.87 + lp1 * 0.13   # ~400 Hz: dull body air
-            air  = lp1 * 0.35 + lp2 * 0.65   # blend: mostly body air
+            # ── High-Q resonant bandpass (narrow peak = rubbery resonance)
+            # Classic 2-pole IIR bandpass: y[n] = (1-r²)·sin(ω)·x - 2r·cos(ω)·y1 + r²·y2
+            omega  = 2.0 * math.pi * freq / rate
+            cos_w  = math.cos(omega)
+            sin_w  = math.sin(omega)
+            r_hi   = 0.955   # high Q → narrow peak, very "rubbery"
+            bp_out = (1.0 - r_hi * r_hi) * sin_w * raw \
+                     - 2.0 * r_hi * cos_w * bp_y1 \
+                     + r_hi * r_hi * bp_y2
+            bp_y2  = bp_y1
+            bp_y1  = bp_out
 
-            # Noise dominates at onset + tail (airy gasp/yell), less at peak
-            if pos < 0.16:
-                noise_w = 0.68
-            elif pos < 0.22:
-                noise_w = 0.60
-            else:
-                # Become almost pure breath by the very end
-                noise_w = min(0.95, 0.62 + 0.33 * (pos - 0.22) / 0.78)
-            tone_w = 1.0 - noise_w
+            # ── Low-Q body-air bandpass (broader, centred ~1.5 octaves below)
+            freq_b = max(40.0, freq * 0.45)
+            om_b   = 2.0 * math.pi * freq_b / rate
+            r_lo   = 0.82
+            lp_out = (1.0 - r_lo * r_lo) * math.sin(om_b) * raw \
+                     - 2.0 * r_lo * math.cos(om_b) * lp_y1 \
+                     + r_lo * r_lo * lp_y2
+            lp_y2  = lp_y1
+            lp_y1  = lp_out
 
-            val    = tone * tone_w + air * noise_w
-            val   *= amp
-            # Soft rubber-fuzz saturation
-            val    = math.tanh(val * 1.35) / 1.35
-            sample = int(val * 0.50 * 32767)
+            # ── Thin tonal reed (just enough "voice") ────────────────────
+            ph    = (ph + freq / rate) % 1.0
+            reed  = math.sin(2 * math.pi * ph) * 0.18 \
+                  + math.sin(2 * math.pi * ph * 1.97) * 0.08  # slight inharmonic
+
+            # ── Mix: resonance body air thin-reed ────────────────────────
+            # Tail becomes almost pure breath (lp_out dominates)
+            body_w = min(0.55, 0.25 + 0.30 * pos / 0.20) if pos < 0.20 else \
+                     0.55 + 0.40 * (pos - 0.20) / 0.80
+            val  = bp_out * (1.0 - body_w) + lp_out * body_w
+            val  = val * 0.82 + reed * 0.18
+            val *= amp
+
+            # Rubber fuzz — very light
+            val    = math.tanh(val * 1.15) / 1.15
+            sample = int(val * 0.52 * 32767)
             buf.append(max(-32768, min(32767, sample)))
         return pygame.mixer.Sound(buffer=buf)
 

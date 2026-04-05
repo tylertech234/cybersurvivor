@@ -16,164 +16,165 @@ _DYING_MS = 250  # duration of the squash-and-spark death animation (ms)
 
 # ── Enemy type presets ──
 ENEMY_TYPES = {
-    # ── Zone 1: The Forest (intro zone) ──
+    # ── Zone 1: The Forest (regulars ×1.25 HP; bosses ×1.875 HP) ──
     "cyber_rat": {
-        "hp": 38, "speed": 4.5, "size": 16,
+        "hp": 48, "speed": 4.5, "size": 16,
         "damage": 9, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
         "xp_value": 15, "status_on_hit": None,
     },
     "cyber_raccoon": {
-        "hp": 100, "speed": 2.6, "size": 26,
+        "hp": 125, "speed": 2.6, "size": 26,
         "damage": 15, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
         "xp_value": 28, "status_on_hit": "bleed",
     },
     "mega_cyber_deer": {
-        "hp": 1125, "speed": 1.9, "size": 56,
-        "damage": 26, "shoot_range": 0,
+        "hp": 2100, "speed": 1.9, "size": 56,
+        "damage": 32, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
         "xp_value": 180, "status_on_hit": None,
         "special": "buck_charge",
     },
     "d_lek": {
-        "hp": 81, "speed": ENEMY_SPEED, "size": ENEMY_SIZE,
+        "hp": 102, "speed": ENEMY_SPEED, "size": ENEMY_SIZE,
         "damage": ENEMY_DAMAGE, "shoot_range": ENEMY_SHOOT_RANGE,
         "shoot_cooldown": ENEMY_SHOOT_COOLDOWN, "bullet_damage": ENEMY_BULLET_DAMAGE,
         "xp_value": 22, "status_on_hit": None,
     },
     "iron_sentinel": {
-        "hp": 1500, "speed": 1.5, "size": 56,
-        "damage": 25, "shoot_range": 350,
-        "shoot_cooldown": 900, "bullet_damage": 16,
+        "hp": 2800, "speed": 1.5, "size": 56,
+        "damage": 30, "shoot_range": 350,
+        "shoot_cooldown": 800, "bullet_damage": 20,
         "xp_value": 200, "status_on_hit": "fire",
         "special": "ground_slam",
     },
     "supreme_d_lek": {
-        "hp": 4700, "speed": 1.2, "size": 72,
-        "damage": 40, "shoot_range": 400,
-        "shoot_cooldown": 600, "bullet_damage": 25,
+        "hp": 8800, "speed": 1.2, "size": 72,
+        "damage": 50, "shoot_range": 400,
+        "shoot_cooldown": 500, "bullet_damage": 32,
         "xp_value": 800, "status_on_hit": "bleed",
         "special": "war_cry",
     },
     "emperors_elite_guard": {
-        "hp": 563, "speed": 2.0, "size": 38,
-        "damage": 22, "shoot_range": 380,
-        "shoot_cooldown": 850, "bullet_damage": 18,
+        "hp": 1050, "speed": 2.0, "size": 38,
+        "damage": 28, "shoot_range": 400,
+        "shoot_cooldown": 750, "bullet_damage": 22,
         "xp_value": 150, "status_on_hit": "bleed",
+        "special": "elite_volley",
     },
     "charger": {
-        "hp": 88, "speed": 2.5, "size": 28,
+        "hp": 110, "speed": 2.5, "size": 28,
         "damage": 24, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
         "xp_value": 30, "status_on_hit": None,
     },
     "shielder": {
-        "hp": 175, "speed": 1.6, "size": 38,
+        "hp": 220, "speed": 1.6, "size": 38,
         "damage": 18, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
         "xp_value": 40, "status_on_hit": "slow",
     },
     "spitter": {
-        "hp": 75, "speed": 2.0, "size": 30,
+        "hp": 94, "speed": 2.0, "size": 30,
         "damage": 10, "shoot_range": 280,
         "shoot_cooldown": 1100, "bullet_damage": 13,
         "xp_value": 26, "status_on_hit": "poison",
     },
-    # ── Zone 2: Ruined City ──
+    # ── Zone 2: Ruined City (regulars ×2.0 HP; bosses ×3.0 HP) ──
     "cyber_zombie": {
-        "hp": 100, "speed": 1.8, "size": 30,
-        "damage": 22, "shoot_range": 0,
-        "shoot_cooldown": 9999, "bullet_damage": 0,
-        "xp_value": 26, "status_on_hit": None,
-    },
-    "cyber_dog": {
-        "hp": 63, "speed": 4.0, "size": 24,
-        "damage": 16, "shoot_range": 0,
-        "shoot_cooldown": 9999, "bullet_damage": 0,
-        "xp_value": 26, "status_on_hit": "bleed",
-    },
-    "drone": {
-        "hp": 56, "speed": 2.8, "size": 22,
-        "damage": 8, "shoot_range": 300,
-        "shoot_cooldown": 800, "bullet_damage": 16,
-        "xp_value": 22, "status_on_hit": None,
-    },
-    "cultist": {
-        "hp": 125, "speed": 2.0, "size": 32,
-        "damage": 12, "shoot_range": 260,
-        "shoot_cooldown": 1300, "bullet_damage": 18,
-        "xp_value": 38, "status_on_hit": "fire",
-    },
-    "shambler": {
-        "hp": 225, "speed": 1.0, "size": 42,
+        "hp": 200, "speed": 1.8, "size": 30,
         "damage": 28, "shoot_range": 0,
-        "shoot_cooldown": 9999, "bullet_damage": 0,
-        "xp_value": 48, "status_on_hit": "poison",
-    },
-    "street_preacher": {
-        "hp": 2250, "speed": 1.4, "size": 52,
-        "damage": 20, "shoot_range": 320,
-        "shoot_cooldown": 1000, "bullet_damage": 16,
-        "xp_value": 250, "status_on_hit": "fire",
-        "special": "flame_pillar",
-    },
-    "eldritch_horror": {
-        "hp": 6560, "speed": 1.0, "size": 80,
-        "damage": 35, "shoot_range": 380,
-        "shoot_cooldown": 700, "bullet_damage": 22,
-        "xp_value": 1000, "status_on_hit": "bleed",
-        "special": "tentacle_sweep",
-    },
-    # ── Zone 3: The Abyss ──
-    "specter": {
-        "hp": 100, "speed": 3.8, "size": 34,
-        "damage": 22, "shoot_range": 0,  # melee only
-        "shoot_cooldown": 9999, "bullet_damage": 0,
-        "xp_value": 38, "status_on_hit": "bleed",
-    },
-    "void_wisp": {
-        "hp": 38, "speed": 3.5, "size": 20,
-        "damage": 10, "shoot_range": 0,
-        "shoot_cooldown": 9999, "bullet_damage": 0,
-        "xp_value": 22, "status_on_hit": None,
-    },
-    "rift_walker": {
-        "hp": 81, "speed": 2.2, "size": 34,
-        "damage": 18, "shoot_range": 0,
-        "shoot_cooldown": 9999, "bullet_damage": 0,
-        "xp_value": 32, "status_on_hit": "slow",
-    },
-    "mirror_shade": {
-        "hp": 60, "speed": 2.5, "size": 28,
-        "damage": 14, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
         "xp_value": 32, "status_on_hit": None,
     },
+    "cyber_dog": {
+        "hp": 126, "speed": 4.0, "size": 24,
+        "damage": 20, "shoot_range": 0,
+        "shoot_cooldown": 9999, "bullet_damage": 0,
+        "xp_value": 32, "status_on_hit": "bleed",
+    },
+    "drone": {
+        "hp": 112, "speed": 2.8, "size": 22,
+        "damage": 12, "shoot_range": 300,
+        "shoot_cooldown": 750, "bullet_damage": 20,
+        "xp_value": 28, "status_on_hit": None,
+    },
+    "cultist": {
+        "hp": 250, "speed": 2.0, "size": 32,
+        "damage": 16, "shoot_range": 260,
+        "shoot_cooldown": 1100, "bullet_damage": 22,
+        "xp_value": 42, "status_on_hit": "fire",
+    },
+    "shambler": {
+        "hp": 450, "speed": 1.0, "size": 42,
+        "damage": 35, "shoot_range": 0,
+        "shoot_cooldown": 9999, "bullet_damage": 0,
+        "xp_value": 55, "status_on_hit": "poison",
+    },
+    "street_preacher": {
+        "hp": 6750, "speed": 1.4, "size": 52,
+        "damage": 26, "shoot_range": 320,
+        "shoot_cooldown": 900, "bullet_damage": 20,
+        "xp_value": 300, "status_on_hit": "fire",
+        "special": "flame_pillar",
+    },
+    "eldritch_horror": {
+        "hp": 20000, "speed": 1.0, "size": 80,
+        "damage": 45, "shoot_range": 380,
+        "shoot_cooldown": 600, "bullet_damage": 28,
+        "xp_value": 1200, "status_on_hit": "bleed",
+        "special": "tentacle_sweep",
+    },
+    # ── Zone 3: The Abyss (regulars ×4.0 HP; bosses ×6.0 HP) ──
+    "specter": {
+        "hp": 400, "speed": 3.8, "size": 34,
+        "damage": 28, "shoot_range": 0,  # melee only
+        "shoot_cooldown": 9999, "bullet_damage": 0,
+        "xp_value": 48, "status_on_hit": "bleed",
+    },
+    "void_wisp": {
+        "hp": 152, "speed": 3.5, "size": 20,
+        "damage": 14, "shoot_range": 0,
+        "shoot_cooldown": 9999, "bullet_damage": 0,
+        "xp_value": 28, "status_on_hit": None,
+    },
+    "rift_walker": {
+        "hp": 324, "speed": 2.2, "size": 34,
+        "damage": 24, "shoot_range": 0,
+        "shoot_cooldown": 9999, "bullet_damage": 0,
+        "xp_value": 40, "status_on_hit": "slow",
+    },
+    "mirror_shade": {
+        "hp": 240, "speed": 2.5, "size": 28,
+        "damage": 20, "shoot_range": 0,
+        "shoot_cooldown": 9999, "bullet_damage": 0,
+        "xp_value": 40, "status_on_hit": None,
+    },
     "gravity_warden": {
-        "hp": 113, "speed": 1.5, "size": 40,
-        "damage": 12, "shoot_range": 250,
-        "shoot_cooldown": 1200, "bullet_damage": 15,
-        "xp_value": 42, "status_on_hit": "slow",
+        "hp": 452, "speed": 1.5, "size": 40,
+        "damage": 18, "shoot_range": 250,
+        "shoot_cooldown": 1000, "bullet_damage": 20,
+        "xp_value": 52, "status_on_hit": "slow",
     },
     "null_serpent": {
-        "hp": 88, "speed": 2.8, "size": 36,
-        "damage": 16, "shoot_range": 0,
+        "hp": 352, "speed": 2.8, "size": 36,
+        "damage": 22, "shoot_range": 0,
         "shoot_cooldown": 9999, "bullet_damage": 0,
-        "xp_value": 38, "status_on_hit": "poison",
+        "xp_value": 48, "status_on_hit": "poison",
     },
     "architect": {
-        "hp": 2800, "speed": 1.2, "size": 56,
-        "damage": 22, "shoot_range": 340,
-        "shoot_cooldown": 900, "bullet_damage": 18,
-        "xp_value": 300, "status_on_hit": "slow",
+        "hp": 16800, "speed": 1.2, "size": 56,
+        "damage": 30, "shoot_range": 340,
+        "shoot_cooldown": 800, "bullet_damage": 24,
+        "xp_value": 400, "status_on_hit": "slow",
         "special": "void_rift",
     },
     "nexus": {
-        "hp": 14000, "speed": 0.9, "size": 120,
-        "damage": 55, "shoot_range": 480,
-        "shoot_cooldown": 420, "bullet_damage": 34,
-        "xp_value": 1500, "status_on_hit": "insanity",
+        "hp": 84000, "speed": 0.9, "size": 120,
+        "damage": 70, "shoot_range": 480,
+        "shoot_cooldown": 380, "bullet_damage": 42,
+        "xp_value": 2000, "status_on_hit": "insanity",
         "special": "null_burst",
     },
 }
@@ -258,6 +259,9 @@ class Enemy:
             "eldritch_pull":    {"cooldown": 6000, "duration": 1500, "range": 500, "aoe_mult": 3.0},
             "void_cage":        {"cooldown": 6500, "duration": 1800, "range": 450, "aoe_mult": 2.5},
             "reality_collapse": {"cooldown": 5500, "duration": 1000, "range": 500, "aoe_mult": 3.5},
+            # Elite Guard specials
+            "elite_volley":     {"cooldown": 4000, "duration": 700,  "range": 380, "aoe_mult": 3.0},
+            "imperial_barrage": {"cooldown": 3500, "duration": 600,  "range": 500, "aoe_mult": 2.0},
         }
         sp = _special_params.get(self._special, {})
         self._special_cooldown = sp.get("cooldown", 5000)
@@ -273,6 +277,7 @@ class Enemy:
             "eldritch_horror": "eldritch_pull",
             "architect":       "void_cage",
             "nexus":           "reality_collapse",
+            "emperors_elite_guard": "imperial_barrage",
         }
         self._special2 = _special2_map.get(enemy_type)
         if self._special2:
@@ -605,6 +610,15 @@ class Enemy:
                 self.x = player_x + math.cos(angle) * td
                 self.y = player_y + math.sin(angle) * td
 
+        # D-Lek: tactical blink to optimal firing range when player closes in
+        if self.enemy_type == "d_lek" and now - self._last_teleport > 7000:
+            if dist < 100:  # player too close — blink away to shooting range
+                angle = random.uniform(0, math.tau)
+                td = random.uniform(200, 320)
+                self.x = player_x + math.cos(angle) * td
+                self.y = player_y + math.sin(angle) * td
+                self._last_teleport = now
+
         # Charger: burst dash toward player
         if self.enemy_type == "charger":
             if self._charging:
@@ -623,12 +637,12 @@ class Enemy:
         # Mega Cyber Deer: powerful charge at player, covers ground fast
         if self.enemy_type == "mega_cyber_deer":
             if self._charging:
-                if now - self._last_charge > 650:
+                if now - self._last_charge > 500:
                     self._charging = False
                 else:
-                    self.x += self._charge_dx * 8.0 * speed_mult
-                    self.y += self._charge_dy * 8.0 * speed_mult
-            elif dist < 350 and now - self._last_charge > 3000:
+                    self.x += self._charge_dx * 11.0 * speed_mult
+                    self.y += self._charge_dy * 11.0 * speed_mult
+            elif dist < 475 and now - self._last_charge > 1800:
                 self._charging = True
                 self._last_charge = now
                 if dist > 0:

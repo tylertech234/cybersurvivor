@@ -8,7 +8,7 @@ NATIVE_HEIGHT = 0  # filled in by main.py
 RESOLUTIONS: dict = {}  # filled in by main.py
 FPS = 60
 TITLE = "Cyber Survivor"
-VERSION = "0.9.3"
+VERSION = "0.9.4"
 
 # -- User data directory (%APPDATA%/CyberSurvivor on Windows) --
 import os as _os
@@ -92,7 +92,7 @@ SPAWN_MARGIN = 120                  # px from screen edge (larger on bigger map)
 
 # -- XP / Leveling --
 XP_PER_KILL = 8
-XP_TO_LEVEL = 100
+XP_TO_LEVEL = 200                   # doubled — level up half as often
 XP_LEVEL_SCALE = 1.4                # multiplier per level
 
 # -- Pickups --

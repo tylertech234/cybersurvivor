@@ -85,91 +85,187 @@ class BossChest:
 
 
 class ChestRewardScreen:
-    """Dramatic chest opening — rolls 1-5 upgrades with scaling fanfare."""
+    """Boss chest — pick one weapon or upgrade from 3 choices. Reroll with coins."""
 
     def __init__(self):
         self.active = False
-        self.rewards: list[dict] = []
+        self.rewards: list[dict] = []       # legacy compat; holds [chosen]
         self.font_big = pygame.font.SysFont("consolas", 28, bold=True)
         self.font = pygame.font.SysFont("consolas", 18)
         self.font_small = pygame.font.SysFont("consolas", 14)
         self.font_icon = pygame.font.SysFont("consolas", 22, bold=True)
         self.font_huge = pygame.font.SysFont("consolas", 48, bold=True)
         self.open_time = 0
-        self.phase = "idle"  # buildup | revealing | revealed
+        self.phase = "idle"  # buildup | choose
         self._sound_manager = None
         self._tooltip = Tooltip()
-        self._reveal_index = 0
-        self._reveal_time = 0
-        self._buildup_duration = 1500  # ms of anticipation
-        self._reveal_interval = 400   # ms between each reward reveal
-        self._jackpot = False  # 5 items = jackpot
+        self._buildup_duration = 1500
         self._particles: list[dict] = []
         self._player_class = "knight"
+        # Choice state
+        self._choices: list[dict] = []
+        self._selected = 0
+        self._reroll_count = 0
+        self._reroll_cost = 1
+        self._player_ref = None
+        self._player_weapon_name = "sword"
+        self._upgrade_tiers: dict = {}
+        self._arsenal: list = []
+        self._reroll_hover = False
 
-    def open_chest(self, player_class: str, player_passives: list = None, sounds=None):
-        """Roll 1-5 random upgrades and start the chest opening sequence."""
+    def open_chest(self, player_class: str, player_passives: list = None, sounds=None,
+                   player_weapon_name: str = "sword", upgrade_tiers: dict = None,
+                   arsenal: list = None, player=None):
+        """Start the chest-opening sequence, generating 3 weapon/upgrade choices."""
         self.active = True
         self.open_time = pygame.time.get_ticks()
         self._sound_manager = sounds
         self._player_class = player_class
+        self._player_ref = player
+        self._player_weapon_name = player_weapon_name
+        self._upgrade_tiers = upgrade_tiers or {}
+        self._arsenal = arsenal or []
+        self._reroll_count = 0
+        self._reroll_cost = 1
+        self.rewards = []
+        self.phase = "buildup"
+        self._particles = []
+        self._selected = 0
+        self._generate_weapon_choices(player_passives)
         if sounds:
             sounds.play("chest_open")
 
-        owned = set(player_passives or [])
+    def _generate_weapon_choices(self, player_passives=None):
+        """Build a pool of weapon swaps + weapon upgrades, pick 3."""
+        # Lazy import to avoid circular dependency at module load time
+        from src.ui.levelup import WEAPON_UPGRADES
+        owned_passives = set(player_passives or [])
+        tiers = self._upgrade_tiers
         pool = []
-        for u in CHEST_UPGRADES:
-            if u["effect"] == "passive" and u["value"] in owned:
+        seen = set()
+
+        # Weapon upgrades for equipped + arsenal weapons
+        weapons_to_check = ([self._player_weapon_name] +
+                            [k for k in self._arsenal if k != self._player_weapon_name])
+        for wk in weapons_to_check:
+            if wk not in WEAPON_UPGRADES:
                 continue
-            pool.append(dict(u))
+            for wu in WEAPON_UPGRADES[wk]:
+                wu_name = wu["name"]
+                if wu_name in seen:
+                    continue
+                current_tier = tiers.get(wu_name, 0)
+                if current_tier >= 3:
+                    seen.add(wu_name)
+                    continue
+                next_tier = current_tier + 1
+                tier_mult = {1: 1.0, 2: 1.5, 3: 2.0}[next_tier]
+                tier_label = {1: "I", 2: "II", 3: "III"}[next_tier]
+                entry = dict(wu)
+                entry["type"] = "weapon_upgrade"
+                entry["tier"] = next_tier
+                entry["base_name"] = wu_name
+                if next_tier > 1:
+                    entry["name"] = f"{wu_name} {tier_label}"
+                    sv = wu["value"]
+                    if isinstance(sv, (int, float)) and sv != 0:
+                        sv = type(sv)(sv * tier_mult)
+                    entry["value"] = sv
+                pool.append(entry)
+                seen.add(wu_name)
 
-        # Roll 1-5 rewards (weighted: 1=30%, 2=30%, 3=25%, 4=10%, 5=5%)
-        roll = random.random()
-        if roll < 0.30:
-            count = 1
-        elif roll < 0.60:
-            count = 2
-        elif roll < 0.85:
-            count = 3
-        elif roll < 0.95:
-            count = 4
-        else:
-            count = 5
+        # Weapon swaps (class-appropriate, not currently equipped)
+        available = [k for k in WEAPONS
+                     if k != self._player_weapon_name
+                     and WEAPONS[k].get("class") == self._player_class
+                     and k not in (self._arsenal or [])]
+        for wk in available:
+            w = WEAPONS[wk]
+            pool.append({
+                "type": "weapon",
+                "name": w["name"],
+                "icon": "W",
+                "color": w.get("blade_color", (200, 200, 200)),
+                "effect": "weapon",
+                "value": wk,
+                "desc": w.get("desc", ""),
+            })
 
-        self._jackpot = count >= 5
-        count = min(count, len(pool))
-        self.rewards = random.sample(pool, count)
-        self._reveal_index = 0
-        self.phase = "buildup"
-        self._particles = []
+        if not pool:
+            # Fallback: a flat +10 damage boost
+            pool = [{"name": "Emergency Overlock", "icon": "D", "color": (255, 80, 60),
+                     "effect": "damage", "value": 10,
+                     "desc": "+10 base damage", "type": "stat"}]
+        self._choices = random.sample(pool, min(3, len(pool)))
 
     def handle_event(self, event: pygame.event.Event) -> bool:
         if not self.active:
             return False
-        confirm = False
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            confirm = True
-        if event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_e):
-            confirm = True
-        if confirm:
-            if self.phase == "buildup":
-                self.phase = "revealing"
-                self._reveal_index = 0
-                self._reveal_time = pygame.time.get_ticks()
-            elif self.phase == "revealing":
-                self._reveal_index = len(self.rewards)
-                self.phase = "revealed"
-                self._reveal_time = pygame.time.get_ticks()
-                if self._jackpot:
-                    self._spawn_explosion()
-                if self._sound_manager:
-                    if self._jackpot:
-                        self._sound_manager.play("chest_fanfare")
-                    else:
+
+        if self.phase == "buildup":
+            # Skip buildup on click/key
+            if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                    or event.type == pygame.KEYDOWN
+                    and event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_e)):
+                self.phase = "choose"
+            return False
+
+        if self.phase == "choose":
+            card_w, card_h = 360, 140
+            gap = 18
+            n = len(self._choices)
+            start_x = SCREEN_WIDTH // 2 - (n * card_w + (n - 1) * gap) // 2
+            card_y = SCREEN_HEIGHT // 2 - card_h // 2 - 30
+            btn_rect = pygame.Rect(SCREEN_WIDTH // 2 - 140, card_y + card_h + 28, 280, 44)
+
+            if event.type == pygame.MOUSEMOTION:
+                mx, my = event.pos
+                self._reroll_hover = btn_rect.collidepoint(mx, my)
+                for i in range(n):
+                    cx = start_x + i * (card_w + gap)
+                    if cx <= mx <= cx + card_w and card_y <= my <= card_y + card_h:
+                        self._selected = i
+                        break
+
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_a, pygame.K_LEFT):
+                    self._selected = (self._selected - 1) % n
+                elif event.key in (pygame.K_d, pygame.K_RIGHT):
+                    self._selected = (self._selected + 1) % n
+                elif event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_e):
+                    self.rewards = [self._choices[self._selected]]
+                    self.active = False
+                    if self._sound_manager:
                         self._sound_manager.play("wheel_stop")
-            elif self.phase == "revealed":
-                self.active = False
-                return True
+                    return True
+                elif event.key in (pygame.K_1, pygame.K_KP1): self._selected = 0
+                elif event.key in (pygame.K_2, pygame.K_KP2): self._selected = min(1, n - 1)
+                elif event.key in (pygame.K_3, pygame.K_KP3): self._selected = min(2, n - 1)
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mx, my = event.pos
+                # Check card clicks
+                for i in range(n):
+                    cx2 = start_x + i * (card_w + gap)
+                    if cx2 <= mx <= cx2 + card_w and card_y <= my <= card_y + card_h:
+                        self.rewards = [self._choices[i]]
+                        self.active = False
+                        if self._sound_manager:
+                            self._sound_manager.play("wheel_stop")
+                        return True
+                # Check reroll button
+                if btn_rect.collidepoint(mx, my):
+                    player_coins = getattr(self._player_ref, "coins", 0)
+                    if player_coins >= self._reroll_cost:
+                        if self._player_ref:
+                            self._player_ref.coins -= self._reroll_cost
+                        self._reroll_count += 1
+                        self._reroll_cost = (1, 2, 4, 8, 15, 25, 40, 60)[min(self._reroll_count, 7)]
+                        self._generate_weapon_choices()
+                        self._selected = 0
+                        self._spawn_explosion()
+                        if self._sound_manager:
+                            self._sound_manager.play("wheel_tick")
         return False
 
     def get_rewards(self) -> list[dict]:
@@ -244,32 +340,9 @@ class ChestRewardScreen:
         now = pygame.time.get_ticks()
         elapsed = now - self.open_time
 
-        # Update phase transitions
+        # Auto-advance buildup
         if self.phase == "buildup" and elapsed >= self._buildup_duration:
-            self.phase = "revealing"
-            self._reveal_index = 0
-            self._reveal_time = now
-
-        if self.phase == "revealing":
-            reveal_elapsed = now - self._reveal_time
-            items_to_show = min(len(self.rewards),
-                                reveal_elapsed // self._reveal_interval + 1)
-            if items_to_show > self._reveal_index:
-                self._reveal_index = items_to_show
-                if self._sound_manager:
-                    self._sound_manager.play("wheel_tick")
-            if self._reveal_index >= len(self.rewards):
-                if self.phase != "revealed":
-                    self.phase = "revealed"
-                    self._reveal_time = now
-                    if self._jackpot:
-                        self._spawn_explosion()
-                    if self._sound_manager:
-                        if self._jackpot:
-                            self._sound_manager.play("boss_roar")
-                            self._sound_manager.play("chest_fanfare")
-                        else:
-                            self._sound_manager.play("wheel_stop")
+            self.phase = "choose"
 
         # Particle update
         self._update_particles(1 / 60)
@@ -285,7 +358,7 @@ class ChestRewardScreen:
         if self.phase == "buildup":
             self._draw_buildup(surface, cx, cy, now, elapsed)
         else:
-            self._draw_rewards(surface, cx, cy, now)
+            self._draw_choices(surface, cx, cy, now)
 
         # Draw particles
         for p in self._particles:
@@ -343,6 +416,107 @@ class ChestRewardScreen:
         dots = "." * (1 + (now // 400) % 3)
         hint = self.font.render(f"Opening{dots}", True, (200, 200, 200))
         surface.blit(hint, (cx - hint.get_width() // 2, cy + 80))
+
+    def _draw_choices(self, surface, cx, cy, now):
+        """Draw 3 weapon/upgrade choice cards + reroll button."""
+        card_w, card_h = 360, 140
+        gap = 18
+        n = len(self._choices)
+        total_w = n * card_w + (n - 1) * gap
+        start_x = cx - total_w // 2
+        card_y = cy - card_h // 2 - 30
+
+        # Title
+        title = self.font_big.render("BOSS CHEST — CHOOSE ONE", True, (255, 220, 50))
+        surface.blit(title, (cx - title.get_width() // 2, card_y - 52))
+
+        for i, choice in enumerate(self._choices):
+            hovered = (i == self._selected)
+            c_col = tuple(choice.get("color", (180, 180, 200)))
+            cx2 = start_x + i * (card_w + gap)
+
+            # Card background
+            bg = (40, 44, 55, 235) if hovered else (22, 24, 32, 215)
+            card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
+            pygame.draw.rect(card_surf, bg, (0, 0, card_w, card_h), border_radius=8)
+            bw = 3 if hovered else 1
+            pygame.draw.rect(card_surf, (*c_col, 255), (0, 0, card_w, card_h), bw, border_radius=8)
+
+            # Hover glow
+            if hovered:
+                glow_a = int(30 + 20 * math.sin(now * 0.006))
+                glow = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
+                glow.fill((*c_col, glow_a))
+                card_surf.blit(glow, (0, 0))
+
+            # Type tag
+            ctype = choice.get("type", "stat")
+            if ctype == "weapon":
+                tag, tag_col = "NEW WEAPON", (255, 200, 80)
+            elif ctype == "weapon_upgrade":
+                tier_lbl = {1: "I", 2: "II", 3: "III"}.get(choice.get("tier", 1), "I")
+                tag, tag_col = f"UPGRADE  TIER {tier_lbl}", (100, 220, 255)
+            else:
+                tag, tag_col = "STAT BOOST", (120, 220, 120)
+            tag_t = self.font_small.render(tag, True, tag_col)
+            card_surf.blit(tag_t, (12, 10))
+
+            # Icon circle
+            pygame.draw.circle(card_surf, c_col, (36, 72), 24)
+            icon_ch = self.font_icon.render(str(choice.get("icon", "?")), True, (255, 255, 255))
+            card_surf.blit(icon_ch, (36 - icon_ch.get_width() // 2, 72 - icon_ch.get_height() // 2))
+
+            # Name
+            name_t = self.font.render(choice["name"], True, c_col if not hovered else (255, 255, 255))
+            card_surf.blit(name_t, (72, 34))
+
+            # Desc (wrap at ~38 chars)
+            desc = str(choice.get("desc", ""))
+            words = desc.split()
+            lines, cur = [], ""
+            for w in words:
+                if len(cur) + len(w) + 1 <= 38:
+                    cur = (cur + " " + w).strip()
+                else:
+                    if cur:
+                        lines.append(cur)
+                    cur = w
+            if cur:
+                lines.append(cur)
+            for li, ln in enumerate(lines[:2]):
+                lt = self.font_small.render(ln, True, (180, 180, 190))
+                card_surf.blit(lt, (72, 60 + li * 16))
+
+            # Number hint
+            num_t = self.font_small.render(f"[{i + 1}]", True, (100, 100, 110))
+            card_surf.blit(num_t, (card_w - num_t.get_width() - 8, card_h - num_t.get_height() - 8))
+
+            surface.blit(card_surf, (cx2, card_y))
+
+        # Reroll button
+        cost = self._reroll_cost
+        can_reroll = getattr(self._player_ref, "coins", 0) >= cost
+        btn_y = card_y + card_h + 28
+        btn_rect = pygame.Rect(cx - 140, btn_y, 280, 44)
+        btn_col = (60, 200, 80) if (can_reroll and self._reroll_hover) else \
+                  (40, 140, 60) if can_reroll else (80, 80, 80)
+        pygame.draw.rect(surface, btn_col, btn_rect, border_radius=8)
+        pygame.draw.rect(surface, (200, 220, 200), btn_rect, 1, border_radius=8)
+        coin_sym = "\u25cf"
+        btn_label = f"Reroll  {coin_sym}{cost}"
+        if not can_reroll:
+            btn_label += "  (need more coins)"
+        bl = self.font.render(btn_label, True, (255, 255, 255) if can_reroll else (130, 130, 130))
+        surface.blit(bl, (cx - bl.get_width() // 2, btn_y + 12))
+
+        # Coins display
+        coins = getattr(self._player_ref, "coins", 0)
+        coin_t = self.font_small.render(f"Coins: {coin_sym}{coins}", True, (255, 210, 60))
+        surface.blit(coin_t, (cx - coin_t.get_width() // 2, btn_y + 60))
+
+        # Instructions
+        hint = self.font_small.render("Click a card or press 1/2/3  |  ENTER to confirm selection", True, (120, 120, 130))
+        surface.blit(hint, (cx - hint.get_width() // 2, SCREEN_HEIGHT - 36))
 
     def _draw_rewards(self, surface, cx, cy, now):
         """Draw revealed reward cards."""

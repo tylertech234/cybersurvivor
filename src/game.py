@@ -898,6 +898,13 @@ class Game:
                 p.speed += value
             elif effect == "passive":
                 self._try_add_passive(value, r.get("name", value))
+            elif effect == "weapon":
+                p.equip_weapon(value)
+                self.toasts.show(f"Equipped: {r['name']}", "New weapon equipped!", (255, 200, 50))
+            elif effect in ("damage", "speed", "range", "cooldown", "max_hp",
+                            "weapon_upgrade", "dash_charges", "glass_cannon"):
+                self._apply_levelup_choice(r)
+                continue  # run_stats already recorded inside _apply_levelup_choice
             # Record all chest rewards as upgrades in run stats
             self.run_stats.record_upgrade(r.get("name", effect))
 
@@ -1292,6 +1299,18 @@ class Game:
                         self.player.x += charge_dx * kb
                         self.player.y += charge_dy * kb
                         self.animations.add_screen_shake(10)
+                elif spec == "elite_volley":
+                    # Emperor's Elite Guard: 5-shot fan burst toward player
+                    if pdist < aoe_range and not self.player.invincible:
+                        hit_player = True
+                    dmg = int(enemy.bullet_damage * 1.2)
+                    base_ang = math.atan2(self.player.y - enemy.y, self.player.x - enemy.x)
+                    for _ei in range(5):
+                        _ang = base_ang + (_ei - 2) * 0.20
+                        _tx = enemy.x + math.cos(_ang) * 400
+                        _ty = enemy.y + math.sin(_ang) * 400
+                        self.projectiles.spawn(enemy.x, enemy.y, _tx, _ty, dmg)
+                    self.sounds.play("enemy_shoot")
                 else:
                     # Fallback generic AoE
                     if pdist < aoe_range and not self.player.invincible:
@@ -1411,6 +1430,17 @@ class Game:
                     self.animations.spawn_death_burst(enemy.x, enemy.y, (140, 210, 255), count=18)
                     self.animations.add_screen_shake(12)
 
+                elif spec2 == "imperial_barrage":
+                    # Emperor's Guard phase-2: heavy 5-shot fan at wide spread
+                    dmg = int(enemy.bullet_damage * 1.4)
+                    base_ang2 = math.atan2(self.player.y - enemy.y, self.player.x - enemy.x)
+                    for _ii in range(5):
+                        _oang = base_ang2 + (_ii - 2) * 0.22
+                        _tx2 = enemy.x + math.cos(_oang) * 450
+                        _ty2 = enemy.y + math.sin(_oang) * 450
+                        self.projectiles.spawn(enemy.x, enemy.y, _tx2, _ty2, dmg)
+                    self.sounds.play("enemy_shoot")
+
                 else:
                     # Generic fallback
                     if pdist2 < aoe_range2 and not self.player.invincible:
@@ -1479,7 +1509,8 @@ class Game:
                 self._record_kill_compendium(enemy)
                 process_enemy_death(enemy, self.player, alive, self.animations,
                                     self.combat, self.sounds, self.lighting,
-                                    self.boss_chests, _kt, self.pickups, now)
+                                    self.boss_chests, _kt, self.pickups, now,
+                                    toasts=self.toasts)
         self.kills = _kt["kills"]
         self.boss_kills = _kt["boss_kills"]
 
@@ -1588,14 +1619,16 @@ class Game:
                                 self._record_kill_compendium(other)
                                 process_enemy_death(other, self.player, alive, self.animations,
                                                     self.combat, self.sounds, self.lighting,
-                                                    self.boss_chests, _kt, self.pickups, now)
+                                                    self.boss_chests, _kt, self.pickups, now,
+                                                    toasts=self.toasts)
                                 self.kills = _kt["kills"]
                                 self.boss_kills = _kt["boss_kills"]
             if not enemy.alive:
                 self._record_kill_compendium(enemy)
                 process_enemy_death(enemy, self.player, alive, self.animations,
                                     self.combat, self.sounds, self.lighting,
-                                    self.boss_chests, _kt, self.pickups, now)
+                                    self.boss_chests, _kt, self.pickups, now,
+                                    toasts=self.toasts)
                 self.kills = _kt["kills"]
                 self.boss_kills = _kt["boss_kills"]
             self.sounds.play("hit")
@@ -1677,7 +1710,13 @@ class Game:
         for chest in self.boss_chests:
             if chest.alive and p_rect.colliderect(chest.rect):
                 chest.alive = False
-                self.chest_reward.open_chest(self.player.char_class, self.player.passives, self.sounds)
+                self.chest_reward.open_chest(
+                    self.player.char_class, self.player.passives, self.sounds,
+                    player_weapon_name=self.player.weapon_name,
+                    upgrade_tiers=getattr(self.player, "upgrade_tiers", {}),
+                    arsenal=getattr(self.player, "arsenal", []),
+                    player=self.player,
+                )
                 log.info("Boss chest opened!")
                 break
         self.boss_chests = [c for c in self.boss_chests if c.alive]

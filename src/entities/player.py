@@ -171,12 +171,12 @@ class Player:
         if "shield_matrix" in self.passives and now - self._shield_matrix_last >= 10000:
             self._shield_matrix_last = now
             return
-        # Passive: evasion — 15% dodge chance
-        if "evasion" in self.passives and random.random() < 0.15:
+        # Passive: evasion — 20% dodge chance
+        if "evasion" in self.passives and random.random() < 0.20:
             return  # dodged!
-        # Passive: armor_plating — 20% damage reduction
+        # Passive: armor_plating — 15% damage reduction
         if "armor_plating" in self.passives:
-            amount = max(1, int(amount * 0.80))
+            amount = max(1, int(amount * 0.85))
         # Legacy: permanent damage reduction
         if self.legacy_dr > 0:
             amount = max(1, int(amount * (1.0 - self.legacy_dr)))

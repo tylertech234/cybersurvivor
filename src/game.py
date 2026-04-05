@@ -1350,9 +1350,9 @@ class Game:
             else:
                 self.combat._add_damage_number(enemy.x, enemy.y - enemy.size, dmg, (255, 255, 100))
             self.animations.spawn_hit_sparks(enemy.x, enemy.y)
-            # Passive: vampiric_strike — heal 3 per hit
+            # Passive: vampiric_strike — heal 4 per hit
             if "vampiric_strike" in self.player.passives:
-                self.player.hp = min(self.player.max_hp, self.player.hp + 3)
+                self.player.hp = min(self.player.max_hp, self.player.hp + 4)
             # Passive: chain_lightning — arc to 2 nearby enemies
             if "chain_lightning" in self.player.passives:
                 chain_dmg = max(1, dmg // 2)

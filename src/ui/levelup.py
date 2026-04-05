@@ -16,7 +16,7 @@ LEVEL_UPGRADES = [
     # Risky / high-impact
     {"name": "Glass Cannon",    "icon": "G", "color": (255, 50, 50),   "effect": "glass_cannon", "value": 0,   "desc": "+30% damage but lose 20 Max HP"},
     # Passive abilities
-    {"name": "Vampiric Strike", "icon": "V", "color": (200, 0, 80),    "effect": "passive", "value": "vampiric_strike", "desc": "Heal 3 HP on each hit"},
+    {"name": "Vampiric Strike", "icon": "V", "color": (200, 0, 80),    "effect": "passive", "value": "vampiric_strike", "desc": "Heal 4 HP on each hit"},
     {"name": "Chain Lightning", "icon": "Z", "color": (100, 200, 255), "effect": "passive", "value": "chain_lightning", "desc": "Hits arc to 2 nearby enemies"},
     {"name": "Thorns",          "icon": "T", "color": (180, 100, 50),  "effect": "passive", "value": "thorns",          "desc": "Reflect 75% melee damage taken back at attacker"},
     {"name": "Second Wind",     "icon": "L", "color": (255, 100, 100), "effect": "passive", "value": "second_wind",     "desc": "Revive once at 30% HP on death"},

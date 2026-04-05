@@ -147,6 +147,11 @@ class SoundManager:
         self.sounds["player_death"] = self._make_player_death()
         self.sounds["player_hit"] = self._make_player_hit()
 
+        # Headphone-friendly master scale: tame the overall amplitude
+        _MASTER = 0.68
+        for _snd in self.sounds.values():
+            _snd.set_volume(_snd.get_volume() * _MASTER)
+
     # ---- individual sound generators ----
 
     @staticmethod
@@ -390,56 +395,43 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_chicken(self) -> pygame.mixer.Sound:
-        """Squeaky rubber toy AHHH — sharp squeeze onset, nasal AHHH sustain,
-        trailing huhuhu shimmy decay.  Rapid hits produce A-ah-ah-ah naturally."""
+        """Squeaky toy reed squeak — 200ms, high-pitched, nasal.
+        Pitch rises fast on squeeze then falls on release, like a real rubber toy.
+        Uses a phase accumulator so all harmonics track the pitch sweep cleanly."""
         rate = 22050
-        n = int(rate * 0.45)   # 450 ms total
+        n = int(rate * 0.20)   # 200 ms — squeaky toys are SHORT
         buf = array.array("h")
+        phase_acc = 0.0
         for i in range(n):
-            t = i / rate
             pos = i / n
-            # Envelope: instant squeeze attack, full AHHH body, slow huhuhu tail
-            if pos < 0.05:
-                env = pos / 0.05
-            elif pos < 0.35:
+            # Envelope: snap attack, hold, clean tail
+            if pos < 0.04:
+                env = pos / 0.04
+            elif pos < 0.55:
                 env = 1.0
-            elif pos < 0.65:
-                env = 1.0 - (pos - 0.35) * 0.5
             else:
-                env = max(0.0, ((1.0 - pos) / 0.35) ** 2)
-            # Pitch: starts high on squeeze (AHHH!), settles, drops again on release
-            base_freq = 520.0 - 200.0 * min(1.0, pos / 0.30)   # 520→320 over first 30 %
-            if pos > 0.50:
-                base_freq -= 120.0 * (pos - 0.50) / 0.50        # 320→200 in tail
-            # Vibrato: mild in sustain, fast "hu-hu-hu" wobble in tail
-            if pos > 0.55:
-                vibrato = math.sin(t * (18.0 + 12.0 * pos) * 2 * math.pi) * 60.0
+                env = max(0.0, 1.0 - (pos - 0.55) / 0.45)
+            # Pitch: rapid compression rise, brief peak, slower release fall
+            if pos < 0.18:
+                freq = 300.0 + 620.0 * (pos / 0.18)   # 300 → 920 Hz
+            elif pos < 0.50:
+                freq = 920.0 - 90.0 * ((pos - 0.18) / 0.32)   # 920 → 830 Hz plateau
             else:
-                vibrato = math.sin(t * 8.0 * 2 * math.pi) * 25.0
-            freq = max(80.0, base_freq + vibrato)
-            # Nasal duty-cycle waveform
-            phase = (t * freq) % 1.0
-            if phase < 0.25:
-                wave = 1.0
-            elif phase < 0.45:
-                wave = -0.4
-            elif phase < 0.55:
-                wave = -0.8
-            else:
-                wave = 0.1
-            # Nasal overtones that give the AHH formant colour
-            overtone = math.sin(2 * math.pi * freq * 2.5 * t) * 0.30
-            overtone2 = math.sin(2 * math.pi * freq * 4.0 * t) * 0.15 * max(0.0, 1.0 - pos * 2)
-            # Squeeze click transient at very start
-            if pos < 0.02:
-                click_raw = (((i * 31337 + 7) * 1103515245 + 12345) >> 16) & 0x7FFF
-                click = (click_raw / 16384.0 - 1.0) * 0.35
-            else:
-                click = 0.0
-            sample = int((wave * 0.40 + overtone + overtone2 + click) * env * 0.70 * 32767)
+                freq = 830.0 - 580.0 * ((pos - 0.50) / 0.50)  # 830 → 250 Hz
+            phase_acc = (phase_acc + freq / rate) % 1.0
+            # Narrow pulse wave (duty 0.18) — the core nasal squeaky character
+            pulse = 1.0 if phase_acc < 0.18 else -0.22
+            # Harmonics via phase accumulator so they follow the pitch sweep
+            h2 = math.sin(4 * math.pi * phase_acc) * 0.42
+            h3 = math.sin(6 * math.pi * phase_acc) * 0.18
+            h4 = math.sin(8 * math.pi * phase_acc) * 0.07
+            # Hair of air-rush noise for the rubber valve texture
+            noise_raw = (((i * 31337 + 11) * 1103515245 + 12345) >> 16) & 0x7FFF
+            air = (noise_raw / 16384.0 - 1.0) * 0.04
+            sample = int((pulse * 0.36 + h2 + h3 + h4 + air) * env * 0.75 * 32767)
             buf.append(max(-32768, min(32767, sample)))
         snd = pygame.mixer.Sound(buffer=buf)
-        snd.set_volume(0.90)
+        snd.set_volume(0.85)
         return snd
 
     def _make_confetti_boom(self) -> pygame.mixer.Sound:

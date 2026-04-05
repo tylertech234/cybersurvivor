@@ -1,6 +1,22 @@
 import pygame
 import math
 import array
+import os
+
+# Directory for optional real audio files that override procedural synthesis.
+# Drop a file named e.g. "chicken.mp3" here to use it instead of synthesis.
+_ASSETS_SOUNDS = os.path.join(os.path.dirname(__file__), "..", "assets", "sounds")
+
+
+def _load_asset(name: str, volume: float = 1.0) -> "pygame.mixer.Sound | None":
+    """Try to load name.mp3 / .wav / .ogg from assets/sounds. Returns None if absent."""
+    for ext in (".mp3", ".wav", ".ogg"):
+        path = os.path.normpath(os.path.join(_ASSETS_SOUNDS, name + ext))
+        if os.path.isfile(path):
+            snd = pygame.mixer.Sound(path)
+            snd.set_volume(volume)
+            return snd
+    return None
 
 
 class SoundManager:
@@ -126,7 +142,7 @@ class SoundManager:
         self.sounds["dash"] = self._make_dash()
         self.sounds["boss_roar"] = self._make_boss_roar()
         self.sounds["throw"] = self._make_throw()
-        self.sounds["chicken"] = self._make_chicken()
+        self.sounds["chicken"] = _load_asset("chicken", volume=0.62) or self._make_chicken()
         self.sounds["confetti_boom"] = self._make_confetti_boom()
         self.sounds["parry"] = self._make_parry()
         self.sounds["wheel_tick"] = self._make_wheel_tick()

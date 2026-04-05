@@ -599,7 +599,7 @@ class Game:
                 if event.key in (pygame.K_SPACE, pygame.K_j):
                     if self.player.try_attack(now):
                         if not fire_player_projectile(self.player, self.player_projectiles, self.sounds):
-                            self.sounds.play("swing")
+                            self.sounds.play(self.player.weapon.get("sound", "swing"))
                             self.animations.add_screen_shake(1)
                 # Dash — Shift or K
                 if event.key in (pygame.K_LSHIFT, pygame.K_RSHIFT, pygame.K_k):
@@ -610,7 +610,7 @@ class Game:
                 now = pygame.time.get_ticks()
                 if self.player.try_attack(now):
                     if not fire_player_projectile(self.player, self.player_projectiles, self.sounds):
-                        self.sounds.play("swing")
+                        self.sounds.play(self.player.weapon.get("sound", "swing"))
                         self.animations.add_screen_shake(1)
 
             # Right-click: start super skill charge when energy is full
@@ -849,7 +849,7 @@ class Game:
                 if self.player.try_attack(now):
                     from src.systems.game_actions import fire_player_projectile as _fpp
                     if not _fpp(self.player, self.player_projectiles, self.sounds):
-                        self.sounds.play("swing")
+                        self.sounds.play(self.player.weapon.get("sound", "swing"))
                         self.animations.add_screen_shake(1)
 
         # Debug cheats: god mode and no cooldown

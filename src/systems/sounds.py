@@ -155,7 +155,7 @@ class SoundManager:
             "hit":           0.38,
             "step":          0.18,
             "pickup":        0.30,
-            "levelup":       0.45,
+            "levelup":       0.58,
             "dash":          0.32,
             "boss_roar":     0.42,
             "throw":         0.30,
@@ -334,53 +334,77 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_levelup(self) -> pygame.mixer.Sound:
-        """Dramatic 6-note level-up fanfare: deep bass thud then soaring arpeggio with sparkle."""
+        """Deep gong strike + low brass swell — WoW-style level-up DING.
+        Phase 1 (0–0.15s): deep resonant GONG hit (inharmonic bell partials)
+        Phase 2 (0.05–2.2s): low brass chord swells up and fades (F2 major triad)
+        Total: ~2.5s"""
         rate = 22050
-        # Bass thud: 0.2s at 130 Hz then 5 rising notes over 1.3s
-        bass_dur = int(rate * 0.20)
-        main_dur = int(rate * 1.30)
-        n = bass_dur + main_dur
+        total = int(rate * 2.5)
         buf = array.array("h")
 
-        # --- bass thud ---
-        for i in range(bass_dur):
-            t = i / rate
-            pos = i / bass_dur
-            env = math.exp(-pos * 8)  # fast decay
-            val = math.sin(2 * math.pi * 130 * t) * 0.55
-            val += math.sin(2 * math.pi * 65 * t) * 0.30   # sub octave
-            val += math.sin(2 * math.pi * 260 * t) * 0.12
-            sample = int(val * env * 32767)
-            buf.append(max(-32768, min(32767, sample)))
+        # Gong partials — inharmonic ratios typical of a bronze bell/gong
+        # Root F2 = 87 Hz
+        root = 87.0
+        gong_partials = [
+            (root,        0.55),   # fundamental
+            (root * 1.50, 0.30),   # quint
+            (root * 2.00, 0.18),   # octave
+            (root * 2.76, 0.22),   # characteristic inharmonic bell partial
+            (root * 3.00, 0.10),
+            (root * 3.50, 0.08),
+            (root * 4.07, 0.06),   # another inharmonic partial
+        ]
+        gong_decay = 4.5   # slow resonant decay
 
-        # --- soaring 5-note arpeggio ---
-        notes = [392, 523, 659, 784, 1047]
-        note_dur = main_dur // len(notes)
-        for i in range(main_dur):
-            t_abs = (bass_dur + i) / rate
-            pos = i / main_dur
-            note_idx = min(i // note_dur, len(notes) - 1)
-            freq = notes[note_idx]
-            note_pos = (i % note_dur) / note_dur
-            # Envelope: quick attack, hold, decay at end
-            attack = min(1.0, note_pos * 12)
-            release = 1.0 - max(0.0, (pos - 0.7) * 3.0)
-            env = attack * release
-            # Rich harmonic tone
-            val = math.sin(2 * math.pi * freq * t_abs) * 0.38
-            val += math.sin(2 * math.pi * freq * 2 * t_abs) * 0.18
-            val += math.sin(2 * math.pi * freq * 3 * t_abs) * 0.09
-            val += math.sin(2 * math.pi * freq * 4 * t_abs) * 0.05
-            # Bell pluck at note start
-            bell = math.sin(2 * math.pi * freq * 5 * t_abs) * 0.07 * max(0, 1 - note_pos * 4)
-            # Sparkle noise burst on last two notes
-            if note_idx >= 3 and (i % 280) < 55:
-                noise = (((i * 31 + 17) * 1103515245 + 12345) >> 16) & 0x7FFF
-                bell += (noise / 16384.0 - 1.0) * 0.06
-            # Final note: add major-third harmony
-            if note_idx == len(notes) - 1:
-                val += math.sin(2 * math.pi * (freq * 1.26) * t_abs) * 0.18
-            sample = int((val + bell) * env * 32767)
+        # Brass chord: F2 major triad voiced low
+        # F2=87, A2=110, C3=131, (F3=175 for brightness)
+        brass_notes = [
+            (87,  0.35),
+            (110, 0.28),
+            (131, 0.22),
+            (175, 0.15),
+        ]
+        brass_start = int(rate * 0.05)   # brass enters just after gong
+        brass_attack_dur = int(rate * 0.25)
+        brass_decay_start = int(rate * 1.4)
+        brass_end = total
+
+        for i in range(total):
+            t = i / rate
+            val = 0.0
+
+            # ── Gong ──────────────────────────────────────────
+            gong_env = math.exp(-t * gong_decay)
+            for freq, amp in gong_partials:
+                val += math.sin(2 * math.pi * freq * t) * amp * gong_env
+
+            # ── Brass swell ───────────────────────────────────
+            if i >= brass_start:
+                bi = i - brass_start
+                # Attack swell
+                b_attack = min(1.0, bi / brass_attack_dur)
+                # Sustain + decay
+                if i < brass_decay_start:
+                    b_env = b_attack
+                else:
+                    b_env = b_attack * max(0.0, 1.0 - (i - brass_decay_start) /
+                                           (brass_end - brass_decay_start))
+                # Brass timbre: saw wave (buzz) + strong harmonics
+                for freq, amp in brass_notes:
+                    bphase = (t * freq) % 1.0
+                    bsaw = 2.0 * bphase - 1.0   # raw saw
+                    # Soft clip for warm brass (not harsh)
+                    bsaw = math.tanh(bsaw * 1.6) * 0.75
+                    val += bsaw * amp * b_env
+                    # Add 2nd harmonic for richness
+                    val += math.sin(2 * math.pi * freq * 2 * t) * amp * 0.25 * b_env
+                    # Slight vibrato on sustain
+                    if i > brass_attack_dur + brass_start:
+                        vib = 1.0 + 0.006 * math.sin(2 * math.pi * 5.5 * t)
+                        val += math.sin(2 * math.pi * freq * vib * t) * amp * 0.10 * b_env
+
+            # Normalise — gong + brass stack can exceed 1.0
+            sample = int(val * 0.38 * 32767)
             buf.append(max(-32768, min(32767, sample)))
 
         return pygame.mixer.Sound(buffer=buf)

@@ -242,6 +242,7 @@ WEAPONS = {
         "trail_color": (255, 255, 100),
         "desc": "BAWK! Surprisingly effective.",
         "class": "jester",
+        "sound": "chicken",
     },
     "banana_rang": {
         "name": "Banana-Rang",

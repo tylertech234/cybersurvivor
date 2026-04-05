@@ -508,6 +508,7 @@ class Game:
                             self.paused = False
                             self.sounds.play("unpause")
                         elif opt == "Switch Weapon":
+                            self.paused = False
                             self.arsenal_screen.activate(self.player.arsenal, self.player.weapon_name)
                         elif opt == "Settings":
                             self.main_menu.settings_open = True

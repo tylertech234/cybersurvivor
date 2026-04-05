@@ -12,6 +12,8 @@ from src.settings import (
 from src.systems.status_effects import StatusManager
 from src.font_cache import get_font
 
+_DYING_MS = 250  # duration of the squash-and-spark death animation (ms)
+
 # ── Enemy type presets ──
 ENEMY_TYPES = {
     # ── Zone 1: The Forest (intro zone) ──
@@ -459,6 +461,8 @@ class Enemy:
             self.hp -= status_dmg
             if self.hp <= 0:
                 self.alive = False
+                self._death_time = now
+                self._corpse_until = now + 1800
                 return
 
         speed_mult = self.statuses.get_speed_mult()
@@ -762,13 +766,17 @@ class Enemy:
     def draw(self, surface: pygame.Surface, camera_x: int, camera_y: int):
         now = pygame.time.get_ticks()
         if not self.alive:
+            elapsed = now - self._death_time
+            sx = int(self.x - camera_x)
+            sy = int(self.y - camera_y)
+            margin = self.size + 32
+            if sx < -margin or sx > SCREEN_WIDTH + margin or sy < -margin or sy > SCREEN_HEIGHT + margin:
+                return
+            if elapsed < _DYING_MS:
+                self._draw_dying_phase(surface, sx, sy, elapsed, now)
+                return
             # Corpse crumble: flat fading body on the floor
             if now < self._corpse_until:
-                sx = int(self.x - camera_x)
-                sy = int(self.y - camera_y)
-                margin = self.size + 32
-                if sx < -margin or sx > SCREEN_WIDTH + margin or sy < -margin or sy > SCREEN_HEIGHT + margin:
-                    return
                 t = (now - self._death_time) / max(1, self._corpse_until - self._death_time)
                 alpha = int(220 * (1.0 - t) ** 1.4)
                 half = self.size // 2
@@ -2296,3 +2304,61 @@ class Enemy:
         # BOSS label
         label = get_font("consolas", 12, True).render("BOSS", True, (180, 100, 255))
         surface.blit(label, (sx - label.get_width() // 2, sy - half - 28))
+
+    def _draw_dying_phase(self, surface: pygame.Surface, sx: int, sy: int,
+                          elapsed: int, now: int):
+        """250ms squash-and-spark death animation before the corpse appears."""
+        t = elapsed / _DYING_MS  # 0..1
+
+        # Color by enemy type family (mirrors game_actions.py mapping)
+        et = self.enemy_type
+        if et in ("cultist", "street_preacher", "eldritch_horror"):
+            col = (160, 60, 200)
+        elif et in ("void_wisp", "rift_walker", "null_serpent", "specter"):
+            col = (140, 80, 220)
+        elif et in ("gravity_warden", "architect", "nexus"):
+            col = (80, 200, 240)
+        elif et == "mirror_shade":
+            col = (100, 100, 120)
+        else:
+            col = (80, 160, 255)  # default: blue-white
+
+        half = max(1, self.size // 2)
+
+        # Ellipse: widen and squash as t increases
+        ew = max(4, int(self.size * (1.0 + t * 0.55)))
+        eh = max(2, int(self.size * (1.0 - t * 0.88)))
+        tilt_deg = t * 82  # fall over (degrees)
+
+        tsz = self.size * 3 + 8
+        tc = tsz // 2
+        tmp = pygame.Surface((tsz, tsz), pygame.SRCALPHA)
+
+        # Main squashed body
+        pygame.draw.ellipse(tmp, (*col, 210), (tc - ew // 2, tc - eh // 2, ew, eh))
+
+        # White impact flash (first ~40% of the phase)
+        if t < 0.4:
+            fa = int(240 * (1.0 - t / 0.4) ** 1.5)
+            pygame.draw.ellipse(tmp, (255, 255, 255, fa),
+                                (tc - ew // 2, tc - eh // 2, ew, eh))
+
+        # Spark lines (4 cardinal directions, fade out by 78%)
+        if t < 0.78:
+            spark_alpha = int(255 * (1.0 - t / 0.78) ** 0.7)
+            ao = (now * 0.006) % (math.pi * 2)  # slow spin offset
+            for i in range(4):
+                angle = i * math.pi / 2 + ao
+                slen = max(2, int(half * 1.2 * (1.0 - t / 0.78)))
+                ex1 = tc + int(math.cos(angle) * (half * 0.55))
+                ey1 = tc + int(math.sin(angle) * (half * 0.55))
+                ex2 = ex1 + int(math.cos(angle) * slen)
+                ey2 = ey1 + int(math.sin(angle) * slen)
+                sc = [(255, 240, 60), (255, 130, 30), (160, 255, 80)][i % 3]
+                pygame.draw.line(tmp, (*sc, spark_alpha), (ex1, ey1), (ex2, ey2), 2)
+
+        # Rotate (fall to the side) and drop slightly
+        rotated = pygame.transform.rotate(tmp, tilt_deg)
+        rw, rh = rotated.get_size()
+        y_drop = int(half * t * 0.35)
+        surface.blit(rotated, (sx - rw // 2, sy - rh // 2 + y_drop))

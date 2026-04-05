@@ -1709,6 +1709,8 @@ class Game:
         self.player_projectiles.draw(self.screen, cx, cy)
 
         self.player.draw(self.screen, cx, cy)
+        if self._player_dying:
+            self._draw_player_dying_squash(cx, cy, pygame.time.get_ticks())
         self.combat.draw(self.screen, cx, cy, self.combat_font)
 
         # Particle animations (death bursts, hit sparks)
@@ -1920,6 +1922,57 @@ class Game:
         self.screen.blit(vig, (0, 0))
 
         self.screen.blit(overlay, (0, 0))
+
+    def _draw_player_dying_squash(self, cx: int, cy: int, now: int):
+        """380ms squash-and-spark overlay drawn over the player sprite on death."""
+        elapsed = now - self._player_death_time
+        if elapsed >= 380:
+            return
+        t = elapsed / 380.0  # 0..1
+        sx = int(self.player.x - cx)
+        sy = int(self.player.y - cy)
+        half = max(1, self.player.size // 2)
+
+        cc = self.player.char_class
+        col = (0, 180, 255) if cc == "knight" else \
+              (0, 255, 150) if cc == "archer" else \
+              (200, 50, 200)
+
+        ew = max(4, int(self.player.size * (1.0 + t * 0.70)))
+        eh = max(2, int(self.player.size * (1.0 - t * 0.90)))
+        tilt_deg = t * 80
+
+        tsz = self.player.size * 4
+        tc = tsz // 2
+        tmp = pygame.Surface((tsz, tsz), pygame.SRCALPHA)
+
+        # Squashed body silhouette
+        pygame.draw.ellipse(tmp, (*col, 200), (tc - ew // 2, tc - eh // 2, ew, eh))
+
+        # White impact flash
+        if t < 0.35:
+            fa = int(250 * (1.0 - t / 0.35) ** 1.8)
+            pygame.draw.ellipse(tmp, (255, 255, 255, fa),
+                                (tc - ew // 2, tc - eh // 2, ew, eh))
+
+        # Sparks (5 around the body, fade out by 75%)
+        if t < 0.75:
+            spark_alpha = int(255 * (1.0 - t / 0.75) ** 0.7)
+            ao = (now * 0.007) % (math.tau)
+            for i in range(5):
+                angle = i * math.tau / 5 + ao
+                slen = max(2, int(half * 1.4 * (1.0 - t / 0.75)))
+                ex1 = tc + int(math.cos(angle) * (half * 0.6))
+                ey1 = tc + int(math.sin(angle) * (half * 0.6))
+                ex2 = ex1 + int(math.cos(angle) * slen)
+                ey2 = ey1 + int(math.sin(angle) * slen)
+                sc = [(255, 240, 60), (255, 120, 30), (160, 255, 100)][i % 3]
+                pygame.draw.line(tmp, (*sc, spark_alpha), (ex1, ey1), (ex2, ey2), 2)
+
+        rotated = pygame.transform.rotate(tmp, tilt_deg)
+        rw, rh = rotated.get_size()
+        y_drop = int(half * t * 0.4)
+        self.screen.blit(rotated, (sx - rw // 2, sy - rh // 2 + y_drop))
 
     def _draw_player_death_overlay(self):
         """Zoom-in + fade-to-black death transition before game over screen."""

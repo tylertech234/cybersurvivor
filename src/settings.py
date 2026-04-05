@@ -12,10 +12,27 @@ VERSION = "0.9.5"
 
 # -- User data directory (%APPDATA%/CyberSurvivor on Windows) --
 import os as _os
-DATA_DIR = _os.path.join(_os.environ.get("APPDATA", ""), "CyberSurvivor") \
-    if _os.name == "nt" \
-    else _os.path.join(_os.path.expanduser("~"), ".cyber_survivor")
-_os.makedirs(DATA_DIR, exist_ok=True)
+
+def _resolve_data_dir() -> str:
+    if _os.name == "nt":
+        # Prefer APPDATA; fall back to LOCALAPPDATA then expanduser so we
+        # never silently resolve to a relative path when the env var is unset.
+        appdata = (_os.environ.get("APPDATA")
+                   or _os.environ.get("LOCALAPPDATA")
+                   or _os.path.join(_os.path.expanduser("~"), "AppData", "Roaming"))
+        return _os.path.join(appdata, "CyberSurvivor")
+    return _os.path.join(_os.path.expanduser("~"), ".cyber_survivor")
+
+DATA_DIR = _resolve_data_dir()
+try:
+    _os.makedirs(DATA_DIR, exist_ok=True)
+except OSError:
+    # Fallback: if the preferred location isn't writable (e.g. read-only
+    # filesystem or missing permissions) use a writable temp directory so
+    # the game can still start; saves won't persist across sessions.
+    import tempfile as _tempfile
+    DATA_DIR = _os.path.join(_tempfile.gettempdir(), "CyberSurvivor")
+    _os.makedirs(DATA_DIR, exist_ok=True)
 
 # -- Colors --
 BLACK = (0, 0, 0)

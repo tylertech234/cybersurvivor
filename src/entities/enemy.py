@@ -335,7 +335,8 @@ class Enemy:
         # Corpse linger — stays visible this many ms after death
         self._corpse_until = 0
         self._death_time = 0
-        self._corpse_surf = None  # cached at death
+        self._corpse_surf = None   # body ellipse, cached at death
+        self._spark_surf = None    # spark-dot overlay (fades out in first 33%)
 
         # Animation
         self.anim_offset = random.uniform(0, math.tau)
@@ -796,17 +797,27 @@ class Enemy:
                 half = self.size // 2
                 cw = max(4, int(self.size * 1.2))
                 ch = max(3, int(self.size * 0.35))
-                # Build corpse surface once, reuse with fading alpha
+                # Build corpse surface once, reuse with fading alpha.
+                # Spark dots are on a separate surface so they can fade out
+                # in the first 33% of the corpse lifetime independently.
                 if self._corpse_surf is None:
                     csurf = pygame.Surface((cw, ch + 6), pygame.SRCALPHA)
                     pygame.draw.ellipse(csurf, (40, 20, 20, 220), (0, 0, cw, ch))
                     pygame.draw.ellipse(csurf, (80, 30, 30, 110), (0, 0, cw, ch), 2)
+                    self._corpse_surf = csurf
+                    ssurf = pygame.Surface((cw, ch + 6), pygame.SRCALPHA)
                     for i in range(3):
                         dot_x = cw // 2 + int((i - 1) * cw * 0.25)
-                        pygame.draw.circle(csurf, (200, 20, 20, 200), (dot_x, ch // 2), 2)
-                    self._corpse_surf = csurf
+                        pygame.draw.circle(ssurf, (200, 20, 20, 200), (dot_x, ch // 2), 2)
+                    self._spark_surf = ssurf
+                blit_pos = (sx - cw // 2, sy - ch // 2 + half // 2)
                 self._corpse_surf.set_alpha(alpha)
-                surface.blit(self._corpse_surf, (sx - cw // 2, sy - ch // 2 + half // 2))
+                surface.blit(self._corpse_surf, blit_pos)
+                # Sparks fade out in the first 33% of corpse lifetime
+                spark_a = int(200 * max(0.0, 1.0 - t / 0.33))
+                if self._spark_surf is not None and spark_a > 0:
+                    self._spark_surf.set_alpha(spark_a)
+                    surface.blit(self._spark_surf, blit_pos)
             return
         sx = int(self.x - camera_x)
         sy = int(self.y - camera_y)

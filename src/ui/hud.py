@@ -15,6 +15,9 @@ class HUD:
         self.font = pygame.font.SysFont("consolas", 20)
         self.font_big = pygame.font.SysFont("consolas", 36)
         self.font_small = pygame.font.SysFont("consolas", 14)
+        # Cached energy flame surface — rebuilt only when bar width changes
+        self._flame_surf: pygame.Surface | None = None
+        self._flame_surf_w: int = 0
 
     def draw(self, surface: pygame.Surface, player, wave: int, enemy_count: int,
              darkness: float = 0.0, boss_wave: bool = False, boss_enemies: list = None):
@@ -132,18 +135,21 @@ class HUD:
         else:
             pygame.draw.rect(surface, (160, 110, 10), (bar_x, bar_y, bar_w, bar_h), 1)
 
-        # Tall flame ripple above bar when full
+        # Tall flame ripple above bar when full — reuse cached surface each frame
         if ready:
             _flame_h = 20
-            flame_surf = pygame.Surface((bar_w, _flame_h), pygame.SRCALPHA)
+            if self._flame_surf is None or self._flame_surf_w != bar_w:
+                self._flame_surf = pygame.Surface((bar_w, _flame_h), pygame.SRCALPHA)
+                self._flame_surf_w = bar_w
+            self._flame_surf.fill((0, 0, 0, 0))
             for i in range(0, bar_w, 4):
                 flicker = math.sin(now * 0.011 + i * 0.35)
                 fh = int(5 + 9 * abs(flicker))
                 g_c = int(60 + 160 * abs(flicker))
                 for row in range(fh):
                     alpha = int(255 * (1.0 - row / (fh + 1)))
-                    pygame.draw.rect(flame_surf, (255, g_c, 0, alpha), (i, row, 4, 1))
-            surface.blit(flame_surf, (bar_x, bar_y - _flame_h + 4))
+                    pygame.draw.rect(self._flame_surf, (255, g_c, 0, alpha), (i, row, 4, 1))
+            surface.blit(self._flame_surf, (bar_x, bar_y - _flame_h + 4))
 
         # Label — big bold flashing when ready
         if ready:

@@ -475,63 +475,76 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_chicken(self) -> pygame.mixer.Sound:
-        """Annoying rubber chicken squeak — FM nasal honk with vibrato tail.
-        1) Sharp nasally SQUEEEAK (FM mod, lots of harmonics, wobbly vibrato)
-        2) Airy wheeze release (pink noise + dying pitch)
-        Total: ~500 ms"""
+        """Rubber chicken toy squeak — air forced through rubber membrane.
+        Starts LOW and RASPY (grunt/gasp), rises fast to high nasal squeal
+        'hauuuUUUHHAAAAA', sustained peak, then slow dying fall.
+        Total: ~1.1s"""
         rate = 22050
-        n = int(rate * 0.50)       # 500 ms
-        buf = array.array("h")
-        phase_c  = 0.0             # carrier phase
-        phase_m  = 0.0             # modulator phase
-        phase_n  = 0.0             # nasal resonance phase
+        n    = int(rate * 1.10)
+        buf  = array.array("h")
+        # Persistent phase accumulators — crucial for click-free pitch sweep
+        ph1  = 0.0   # fundamental
+        ph2  = 0.0   # 2nd harmonic
+        ph3  = 0.0   # 3rd harmonic
+        ph4  = 0.0   # 4th harmonic (adds kazoo edge)
         for i in range(n):
             pos = i / n
             t   = i / rate
 
-            # ── envelope ──────────────────────────────────────────
-            # Fast attack, hold, slow tail
-            attack = min(1.0, pos * 40)
-            if pos < 0.55:
-                release = 1.0
+            # ── Pitch envelope ────────────────────────────────────────────
+            # Phase 1 (0-12%): low onset grunt — 140 → 260 Hz
+            # Phase 2 (12-42%): fast squeeze rise — 260 → 920 Hz  (exponential)
+            # Phase 3 (42-63%): held peak plateau — ~920 Hz
+            # Phase 4 (63-100%): slow pressure release — 920 → 200 Hz
+            if pos < 0.12:
+                freq = 140.0 + 120.0 * (pos / 0.12)
+            elif pos < 0.42:
+                r = (pos - 0.12) / 0.30
+                freq = 260.0 + 660.0 * (r ** 1.6)          # 260 → 920 Hz exponential
+            elif pos < 0.63:
+                # Plateau with slight membrane flutter pitch wobble
+                flutter = 1.0 + 0.025 * math.sin(2 * math.pi * 22 * t)
+                freq = 920.0 * flutter
             else:
-                release = max(0.0, 1.0 - (pos - 0.55) / 0.45)
-            env = attack * release
+                # Slow dying release — pressure falls, pitch drops
+                r = (pos - 0.63) / 0.37
+                freq = 920.0 * (1.0 - r * 0.80) ** 1.3     # 920 → 184 Hz
 
-            # ── carrier pitch: SQUEEEAK arc ───────────────────────
-            # Rise hard (0→40%): 280 → 900 Hz
-            # Peak wobble (40→65%): 900 Hz + fast vibrato
-            # Fall (65%→end): 900 → 150 Hz
-            if pos < 0.40:
-                c_freq = 280.0 + 1550.0 * (pos / 0.40) ** 1.4
+            freq = max(100.0, freq)
+
+            # ── Amplitude envelope ────────────────────────────────────────
+            # Very fast attack (grunt onset), hold, slow tail fade
+            if pos < 0.07:
+                amp = pos / 0.07                             # 0→1
             elif pos < 0.65:
-                vibrato = 1.0 + 0.06 * math.sin(2 * math.pi * 14 * t)
-                c_freq  = 900.0 * vibrato
+                amp = 1.0
             else:
-                c_freq = 900.0 * ((1.0 - pos) / 0.35) ** 0.6
-            c_freq = max(80.0, c_freq)
+                amp = max(0.0, 1.0 - (pos - 0.65) / 0.35)
 
-            # ── FM modulator: nasal quality ───────────────────────
-            m_freq  = c_freq * 2.1       # slightly off from integer ratio = nasal/honky
-            m_depth = 3.8 * math.sin(2 * math.pi * 7.5 * t) * (1 - pos * 0.5)
-            phase_m = (phase_m + m_freq  / rate) % 1.0
-            phase_c = (phase_c + c_freq  / rate) % 1.0
+            # ── Rubber membrane harmonic stack ────────────────────────────
+            # The characteristic rubber toy sound: 2nd harmonic is nearly as
+            # loud as the fundamental; 3rd adds the nasal "quack" edge
+            ph1 = (ph1 + freq        / rate) % 1.0
+            ph2 = (ph2 + freq * 2.0  / rate) % 1.0
+            ph3 = (ph3 + freq * 3.0  / rate) % 1.0
+            ph4 = (ph4 + freq * 4.17 / rate) % 1.0   # slightly inharmonic = rubber buzz
 
-            # FM carrier
-            fm_val  = math.sin(2 * math.pi * (phase_c + m_depth * math.sin(2 * math.pi * phase_m)))
+            tone  = math.sin(2 * math.pi * ph1) * 0.42   # fundamental
+            tone += math.sin(2 * math.pi * ph2) * 0.38   # 2nd harmonic (nearly equal!)
+            tone += math.sin(2 * math.pi * ph3) * 0.18   # 3rd — nasal honk quality
+            tone += math.sin(2 * math.pi * ph4) * 0.09   # inharmonic buzz
 
-            # ── Nasal resonance band (band-pass-ish via extra sine) ─
-            phase_n = (phase_n + c_freq * 1.5 / rate) % 1.0
-            nasal   = math.sin(2 * math.pi * phase_n) * 0.45
+            # ── Membrane flutter rasp ─────────────────────────────────────
+            # Strongest at onset grunt and dying tail; nearly absent at peak
+            rasp_env = max(0.0, 1.0 - 3.0 * (pos - 0.12)) if pos < 0.45 else (
+                       max(0.0, (pos - 0.65) / 0.35))
+            raw_noise = (((i * 1103515245 + 12345) >> 16) & 0x7FFF) / 16384.0 - 1.0
+            # Modulate noise with a fast flutter (membrane flap rate ~180 Hz)
+            flutter_gate = 0.5 + 0.5 * math.sin(2 * math.pi * 180 * t)
+            rasp = raw_noise * flutter_gate * 0.30 * rasp_env
 
-            # ── Airy wheeze: pink-ish noise in the tail ────────────
-            wheeze = 0.0
-            if pos > 0.55:
-                raw  = (((i * 1103515245 + 12345) >> 16) & 0x7FFF) / 16384.0 - 1.0
-                wheeze = raw * 0.30 * ((pos - 0.55) / 0.45)
-
-            val    = (fm_val * 0.55 + nasal * 0.35 + wheeze) * env
-            sample = int(val * 0.85 * 32767)
+            val    = (tone + rasp) * amp
+            sample = int(val * 0.72 * 32767)
             buf.append(max(-32768, min(32767, sample)))
         return pygame.mixer.Sound(buffer=buf)
 

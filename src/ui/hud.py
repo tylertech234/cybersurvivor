@@ -98,20 +98,15 @@ class HUD:
         ready = energy >= max_energy
         flash_on = ready and (now // 80) % 2 == 0   # faster flash
 
-        # Screen-edge golden corner bursts when ready
+        # Subtle golden edge vignette when super is ready
         if ready:
-            corner_pulse = 0.5 + 0.5 * math.sin(now * 0.006)
-            corner_alpha = int(80 + 100 * corner_pulse)
-            corner_size = int(120 + 40 * corner_pulse)
-            for cx_c, cy_c in [(0, 0), (SCREEN_WIDTH, 0),
-                                (0, SCREEN_HEIGHT), (SCREEN_WIDTH, SCREEN_HEIGHT)]:
-                cs = pygame.Surface((corner_size, corner_size), pygame.SRCALPHA)
-                pygame.draw.circle(cs, (255, 220, 0, corner_alpha),
-                                   (0 if cx_c == 0 else corner_size,
-                                    0 if cy_c == 0 else corner_size),
-                                   corner_size)
-                surface.blit(cs, (cx_c - (corner_size if cx_c > 0 else 0),
-                                  cy_c - (corner_size if cy_c > 0 else 0)))
+            edge_pulse = int(28 + 18 * math.sin(now * 0.006))
+            vig = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            for t in range(14):
+                a = max(0, edge_pulse - t * 3)
+                pygame.draw.rect(vig, (255, 200, 0, a),
+                                 (t, t, SCREEN_WIDTH - t * 2, SCREEN_HEIGHT - t * 2), 1)
+            surface.blit(vig, (0, 0))
 
         # Background
         pygame.draw.rect(surface, (25, 18, 0), (bar_x, bar_y, bar_w, bar_h))

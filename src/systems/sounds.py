@@ -159,7 +159,7 @@ class SoundManager:
             "dash":          0.32,
             "boss_roar":     0.42,
             "throw":         0.30,
-            "chicken":       0.50,
+            "chicken":       0.62,
             "confetti_boom": 0.35,
             "parry":         0.40,
             "wheel_tick":    0.18,
@@ -475,76 +475,69 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_chicken(self) -> pygame.mixer.Sound:
-        """Rubber chicken toy squeak — air forced through rubber membrane.
-        Starts LOW and RASPY (grunt/gasp), rises fast to high nasal squeal
-        'hauuuUUUHHAAAAA', sustained peak, then slow dying fall.
-        Total: ~1.1s"""
-        rate = 22050
-        n    = int(rate * 1.10)
-        buf  = array.array("h")
-        # Persistent phase accumulators — crucial for click-free pitch sweep
-        ph1  = 0.0   # fundamental
-        ph2  = 0.0   # 2nd harmonic
-        ph3  = 0.0   # 3rd harmonic
-        ph4  = 0.0   # 4th harmonic (adds kazoo edge)
+        """Rubber chicken toy — DEEP drawn-out squeak, runs long past the swing.
+        Pitch range cut in half vs before (deeper body).  2.5s total.
+        hauuuUUHHHHaaaaaaaaaah — onset rasp, rise, long plateau, very slow decay.
+        """
+        rate  = 22050
+        dur   = 2.50            # seconds — extends well past the attack animation
+        n     = int(rate * dur)
+        buf   = array.array("h")
+        ph1 = ph2 = ph3 = ph4 = 0.0
+
         for i in range(n):
-            pos = i / n
+            pos = i / n         # 0..1 over full 2.5 s
             t   = i / rate
 
-            # ── Pitch envelope ────────────────────────────────────────────
-            # Phase 1 (0-12%): low onset grunt — 140 → 260 Hz
-            # Phase 2 (12-42%): fast squeeze rise — 260 → 920 Hz  (exponential)
-            # Phase 3 (42-63%): held peak plateau — ~920 Hz
-            # Phase 4 (63-100%): slow pressure release — 920 → 200 Hz
-            if pos < 0.12:
-                freq = 140.0 + 120.0 * (pos / 0.12)
-            elif pos < 0.42:
-                r = (pos - 0.12) / 0.30
-                freq = 260.0 + 660.0 * (r ** 1.6)          # 260 → 920 Hz exponential
-            elif pos < 0.63:
-                # Plateau with slight membrane flutter pitch wobble
-                flutter = 1.0 + 0.025 * math.sin(2 * math.pi * 22 * t)
-                freq = 920.0 * flutter
+            # ── Pitch envelope (all freqs halved → richer/deeper) ─────────
+            # 0-8%:   low grunt onset    60 → 120 Hz
+            # 8-30%:  exponential rise   120 → 460 Hz
+            # 30-52%: peak plateau       ~460 Hz + wobble
+            # 52-100% long slow release  460 → 55 Hz  (the "drawn out" part)
+            if pos < 0.08:
+                freq = 60.0 + 60.0 * (pos / 0.08)
+            elif pos < 0.30:
+                r    = (pos - 0.08) / 0.22
+                freq = 120.0 + 340.0 * (r ** 1.5)          # 120 → 460 Hz
+            elif pos < 0.52:
+                flutter = 1.0 + 0.022 * math.sin(2 * math.pi * 18 * t)
+                freq = 460.0 * flutter
             else:
-                # Slow dying release — pressure falls, pitch drops
-                r = (pos - 0.63) / 0.37
-                freq = 920.0 * (1.0 - r * 0.80) ** 1.3     # 920 → 184 Hz
-
-            freq = max(100.0, freq)
+                # Very slow, long dying fall — this is the "drawn out" tail
+                r    = (pos - 0.52) / 0.48
+                freq = 460.0 * (1.0 - r * 0.88) ** 1.4     # 460 → 55 Hz
+            freq = max(45.0, freq)
 
             # ── Amplitude envelope ────────────────────────────────────────
-            # Very fast attack (grunt onset), hold, slow tail fade
-            if pos < 0.07:
-                amp = pos / 0.07                             # 0→1
-            elif pos < 0.65:
+            # Fast attack, long sustain through peak, then slow 1.2 s fade out
+            if pos < 0.05:
+                amp = pos / 0.05
+            elif pos < 0.48:
                 amp = 1.0
             else:
-                amp = max(0.0, 1.0 - (pos - 0.65) / 0.35)
+                # Long fade — still audible at pos=0.75 so it trails the swing
+                amp = max(0.0, 1.0 - (pos - 0.48) / 0.52)
 
-            # ── Rubber membrane harmonic stack ────────────────────────────
-            # The characteristic rubber toy sound: 2nd harmonic is nearly as
-            # loud as the fundamental; 3rd adds the nasal "quack" edge
+            # ── Harmonic stack (rubber membrane) ─────────────────────────
             ph1 = (ph1 + freq        / rate) % 1.0
             ph2 = (ph2 + freq * 2.0  / rate) % 1.0
             ph3 = (ph3 + freq * 3.0  / rate) % 1.0
-            ph4 = (ph4 + freq * 4.17 / rate) % 1.0   # slightly inharmonic = rubber buzz
+            ph4 = (ph4 + freq * 4.17 / rate) % 1.0
 
-            tone  = math.sin(2 * math.pi * ph1) * 0.42   # fundamental
-            tone += math.sin(2 * math.pi * ph2) * 0.38   # 2nd harmonic (nearly equal!)
-            tone += math.sin(2 * math.pi * ph3) * 0.18   # 3rd — nasal honk quality
-            tone += math.sin(2 * math.pi * ph4) * 0.09   # inharmonic buzz
+            tone  = math.sin(2 * math.pi * ph1) * 0.44
+            tone += math.sin(2 * math.pi * ph2) * 0.38   # near-equal 2nd = rubber quality
+            tone += math.sin(2 * math.pi * ph3) * 0.16
+            tone += math.sin(2 * math.pi * ph4) * 0.08
 
-            # ── Membrane flutter rasp ─────────────────────────────────────
-            # Strongest at onset grunt and dying tail; nearly absent at peak
-            rasp_env = max(0.0, 1.0 - 3.0 * (pos - 0.12)) if pos < 0.45 else (
-                       max(0.0, (pos - 0.65) / 0.35))
-            raw_noise = (((i * 1103515245 + 12345) >> 16) & 0x7FFF) / 16384.0 - 1.0
-            # Modulate noise with a fast flutter (membrane flap rate ~180 Hz)
-            flutter_gate = 0.5 + 0.5 * math.sin(2 * math.pi * 180 * t)
-            rasp = raw_noise * flutter_gate * 0.30 * rasp_env
+            # ── Flutter rasp — onset + dying tail ────────────────────────
+            rasp_env = (max(0.0, 1.0 - pos / 0.12)                    # onset
+                        + max(0.0, (pos - 0.55) / 0.45) * 0.6)        # tail
+            raw  = (((i * 1103515245 + 12345) >> 16) & 0x7FFF) / 16384.0 - 1.0
+            gate = 0.5 + 0.5 * math.sin(2 * math.pi * 90 * t)        # 90 Hz flutter (deeper)
+            rasp = raw * gate * 0.28 * rasp_env
 
             val    = (tone + rasp) * amp
-            sample = int(val * 0.72 * 32767)
+            sample = int(val * 0.70 * 32767)
             buf.append(max(-32768, min(32767, sample)))
         return pygame.mixer.Sound(buffer=buf)
 

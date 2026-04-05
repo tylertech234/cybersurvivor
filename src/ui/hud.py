@@ -88,7 +88,7 @@ class HUD:
         surface.blit(num_surf, (bar_x + bar_w // 2 - num_surf.get_width() // 2, bar_y - 14))
 
     def _draw_energy_bar(self, surface: pygame.Surface, player):
-        """Horizontal energy bar under the HP bar. Gold border, fire when full."""
+        """Horizontal energy bar under the HP bar. Gold border, fireworks when full."""
         bar_x, bar_y = 20, 48
         bar_w, bar_h = 220, 16
         energy = getattr(player, "energy", 0)
@@ -96,55 +96,69 @@ class HUD:
         ratio = min(1.0, energy / max_energy) if max_energy > 0 else 0
         now = pygame.time.get_ticks()
         ready = energy >= max_energy
-        flash_on = ready and (now // 120) % 2 == 0
+        flash_on = ready and (now // 80) % 2 == 0   # faster flash
+
+        # Screen-edge golden corner bursts when ready
+        if ready:
+            corner_pulse = 0.5 + 0.5 * math.sin(now * 0.006)
+            corner_alpha = int(80 + 100 * corner_pulse)
+            corner_size = int(120 + 40 * corner_pulse)
+            for cx_c, cy_c in [(0, 0), (SCREEN_WIDTH, 0),
+                                (0, SCREEN_HEIGHT), (SCREEN_WIDTH, SCREEN_HEIGHT)]:
+                cs = pygame.Surface((corner_size, corner_size), pygame.SRCALPHA)
+                pygame.draw.circle(cs, (255, 220, 0, corner_alpha),
+                                   (0 if cx_c == 0 else corner_size,
+                                    0 if cy_c == 0 else corner_size),
+                                   corner_size)
+                surface.blit(cs, (cx_c - (corner_size if cx_c > 0 else 0),
+                                  cy_c - (corner_size if cy_c > 0 else 0)))
 
         # Background
         pygame.draw.rect(surface, (25, 18, 0), (bar_x, bar_y, bar_w, bar_h))
 
-        # Fill colour
+        # Fill
         fill_w = int(bar_w * ratio)
         if fill_w > 0:
             if ready:
-                # Flashing bright gold when full
-                if flash_on:
-                    fill_c = (255, 255, 160)
-                else:
-                    fill_c = (230, 180, 20)
+                fill_c = (255, 255, 100) if flash_on else (255, 200, 0)
             else:
-                # Dark amber gradient-ish: brighter as it fills
                 r = min(255, 160 + int(95 * ratio))
                 g = min(255, 80 + int(100 * ratio))
                 fill_c = (r, g, 0)
             pygame.draw.rect(surface, fill_c, (bar_x, bar_y, fill_w, bar_h))
 
-        # Border — plain gold, fire-glow when full
+        # Border
         if ready:
-            pulse = int(35 * abs(math.sin(now * 0.008)))
-            border_c = (255, min(255, 200 + pulse), 40)
-            pygame.draw.rect(surface, border_c, (bar_x, bar_y, bar_w, bar_h), 2)
-            # Inner bright line
-            pygame.draw.rect(surface, (255, 255, 100), (bar_x + 1, bar_y + 1, bar_w - 2, 2))
+            pulse = int(55 * abs(math.sin(now * 0.010)))
+            border_c = (255, min(255, 200 + pulse), 0)
+            # Thick glowing border
+            pygame.draw.rect(surface, border_c, (bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4), 3)
+            pygame.draw.rect(surface, (255, 255, 255), (bar_x, bar_y, bar_w, bar_h), 1)
         else:
             pygame.draw.rect(surface, (160, 110, 10), (bar_x, bar_y, bar_w, bar_h), 1)
 
-        # Flame ripple along top of bar when full
+        # Tall flame ripple above bar when full
         if ready:
-            _flame_h = 10
+            _flame_h = 20
             flame_surf = pygame.Surface((bar_w, _flame_h), pygame.SRCALPHA)
-            for i in range(0, bar_w, 5):
-                flicker = math.sin(now * 0.009 + i * 0.4)
-                fh = int(3 + 3 * abs(flicker))
-                g_c = int(80 + 140 * abs(flicker))
+            for i in range(0, bar_w, 4):
+                flicker = math.sin(now * 0.011 + i * 0.35)
+                fh = int(5 + 9 * abs(flicker))
+                g_c = int(60 + 160 * abs(flicker))
                 for row in range(fh):
-                    alpha = int(240 * (1.0 - row / (fh + 1)))
-                    pygame.draw.rect(flame_surf, (255, g_c, 0, alpha), (i, row, 5, 1))
-            surface.blit(flame_surf, (bar_x, bar_y))
+                    alpha = int(255 * (1.0 - row / (fh + 1)))
+                    pygame.draw.rect(flame_surf, (255, g_c, 0, alpha), (i, row, 4, 1))
+            surface.blit(flame_surf, (bar_x, bar_y - _flame_h + 4))
 
-        # "SUPER" label with flash
+        # Label — big bold flashing when ready
         if ready:
-            lbl_color = (255, 255, 100) if flash_on else (200, 160, 20)
-            lbl = self.font_small.render("SUPER READY", True, lbl_color)
-            surface.blit(lbl, (bar_x + bar_w // 2 - lbl.get_width() // 2, bar_y + 1))
+            lbl_color = (255, 255, 255) if flash_on else (255, 220, 0)
+            lbl = self.font.render("⚡ SUPER READY ⚡", True, lbl_color)
+            # Shadow
+            shadow = self.font.render("⚡ SUPER READY ⚡", True, (80, 40, 0))
+            lx = bar_x + bar_w // 2 - lbl.get_width() // 2
+            surface.blit(shadow, (lx + 2, bar_y + 2))
+            surface.blit(lbl, (lx, bar_y))
         else:
             e_lbl = self.font_small.render(f"ENERGY  {energy}/{max_energy}", True, (140, 100, 10))
             surface.blit(e_lbl, (bar_x + 4, bar_y + 1))

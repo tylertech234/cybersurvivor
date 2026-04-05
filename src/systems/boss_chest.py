@@ -163,7 +163,10 @@ class ChestRewardScreen:
                 if self._jackpot:
                     self._spawn_explosion()
                 if self._sound_manager:
-                    self._sound_manager.play("wheel_stop")
+                    if self._jackpot:
+                        self._sound_manager.play("chest_fanfare")
+                    else:
+                        self._sound_manager.play("wheel_stop")
             elif self.phase == "revealed":
                 self.active = False
                 return True
@@ -173,21 +176,54 @@ class ChestRewardScreen:
         return list(self.rewards)
 
     def _spawn_explosion(self):
-        """Spawn particles for jackpot (5-item roll)."""
+        """Spawn 300+ firework particles for jackpot (5-item roll)."""
         cx, cy = SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-        for _ in range(80):
+        COLORS = [
+            (255, 220, 50), (255, 200, 20), (255, 255, 150),
+            (255, 120, 50), (255, 255, 255), (200, 255, 100),
+            (255, 160, 220), (120, 220, 255),
+        ]
+        # Central burst — 150 confetti in all directions
+        for _ in range(150):
             angle = random.uniform(0, math.pi * 2)
-            speed = random.uniform(2, 10)
+            speed = random.uniform(3, 14)
             self._particles.append({
                 "x": float(cx), "y": float(cy),
                 "vx": math.cos(angle) * speed,
                 "vy": math.sin(angle) * speed,
-                "life": random.uniform(0.5, 1.5),
+                "life": random.uniform(0.8, 2.2),
                 "age": 0.0,
-                "color": random.choice([
-                    (255, 220, 50), (255, 180, 30), (255, 255, 150),
-                    (255, 100, 50), (255, 255, 255),
-                ]),
+                "color": random.choice(COLORS),
+                "size": random.randint(3, 7),
+            })
+        # 6 upward fountain rockets — launched from spread positions
+        for k in range(6):
+            rx = cx + (k - 2.5) * 80
+            for _ in range(25):
+                angle = random.uniform(-math.pi * 0.7, -math.pi * 0.3)
+                speed = random.uniform(8, 18)
+                self._particles.append({
+                    "x": float(rx), "y": float(cy + 60),
+                    "vx": math.cos(angle) * speed,
+                    "vy": math.sin(angle) * speed,
+                    "life": random.uniform(1.0, 2.5),
+                    "age": 0.0,
+                    "color": random.choice(COLORS),
+                    "size": random.randint(3, 6),
+                })
+        # Bottom-edge celebration shower
+        for _ in range(60):
+            bx = random.uniform(0, SCREEN_WIDTH)
+            by = float(SCREEN_HEIGHT)
+            angle = random.uniform(-math.pi * 0.85, -math.pi * 0.15)
+            speed = random.uniform(10, 20)
+            self._particles.append({
+                "x": bx, "y": by,
+                "vx": math.cos(angle) * speed,
+                "vy": math.sin(angle) * speed,
+                "life": random.uniform(1.2, 2.8),
+                "age": 0.0,
+                "color": random.choice(COLORS),
                 "size": random.randint(2, 5),
             })
 
@@ -229,8 +265,11 @@ class ChestRewardScreen:
                     if self._jackpot:
                         self._spawn_explosion()
                     if self._sound_manager:
-                        snd = "boss_roar" if self._jackpot else "wheel_stop"
-                        self._sound_manager.play(snd)
+                        if self._jackpot:
+                            self._sound_manager.play("boss_roar")
+                            self._sound_manager.play("chest_fanfare")
+                        else:
+                            self._sound_manager.play("wheel_stop")
 
         # Particle update
         self._update_particles(1 / 60)
@@ -316,12 +355,19 @@ class ChestRewardScreen:
         title = self.font_big.render(title_text, True, color_title)
         surface.blit(title, (cx - title.get_width() // 2, 40))
 
-        # Jackpot flash background
+        # Jackpot flash background — bright golden pulse
         if self._jackpot and self.phase == "revealed":
-            flash = int(30 * (0.5 + 0.5 * math.sin(now * 0.008)))
+            flash = int(90 + 70 * math.sin(now * 0.007))
             fs = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             fs.fill((255, 220, 50, flash))
             surface.blit(fs, (0, 0))
+            # Screen-edge gold glow
+            edge = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            edge_a = int(60 + 50 * math.sin(now * 0.009))
+            for t in range(18):
+                a = max(0, edge_a - t * 4)
+                pygame.draw.rect(edge, (255, 200, 0, a), (t, t, SCREEN_WIDTH - t * 2, SCREEN_HEIGHT - t * 2), 2)
+            surface.blit(edge, (0, 0))
 
         # Layout cards
         card_w, card_h = 360, 70

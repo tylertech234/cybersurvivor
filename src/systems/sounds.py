@@ -132,6 +132,7 @@ class SoundManager:
         self.sounds["wheel_tick"] = self._make_wheel_tick()
         self.sounds["wheel_stop"] = self._make_wheel_stop()
         self.sounds["chest_open"] = self._make_chest_open()
+        self.sounds["chest_fanfare"] = self._make_chest_fanfare()
         self.sounds["shield_block"] = self._make_shield_block()
         self.sounds["enemy_death"] = self._make_enemy_death()
         self.sounds["charge_whoosh"] = self._make_charge_whoosh()
@@ -147,10 +148,42 @@ class SoundManager:
         self.sounds["player_death"] = self._make_player_death()
         self.sounds["player_hit"] = self._make_player_hit()
 
-        # Headphone-friendly master scale: tame the overall amplitude
-        _MASTER = 0.68
-        for _snd in self.sounds.values():
-            _snd.set_volume(_snd.get_volume() * _MASTER)
+        # Explicit headphone-friendly volumes — clearly lower than raw generator output
+        _vol = {
+            "swing":         0.40,
+            "enemy_shoot":   0.35,
+            "hit":           0.38,
+            "step":          0.18,
+            "pickup":        0.30,
+            "levelup":       0.45,
+            "dash":          0.32,
+            "boss_roar":     0.42,
+            "throw":         0.30,
+            "chicken":       0.50,
+            "confetti_boom": 0.35,
+            "parry":         0.40,
+            "wheel_tick":    0.18,
+            "wheel_stop":    0.40,
+            "chest_open":    0.35,
+            "chest_fanfare": 0.55,
+            "shield_block":  0.38,
+            "enemy_death":   0.32,
+            "charge_whoosh": 0.35,
+            "dog_bark":      0.35,
+            "dog_growl":     0.28,
+            "radar_beep_far":   0.12,
+            "radar_beep_mid":   0.16,
+            "radar_beep_close": 0.22,
+            "pause":         0.20,
+            "unpause":       0.20,
+            "boss_death":    0.45,
+            "big_boss_death": 0.50,
+            "player_death":  0.45,
+            "player_hit":    0.48,
+        }
+        for _name, _v in _vol.items():
+            if _name in self.sounds:
+                self.sounds[_name].set_volume(_v)
 
     # ---- individual sound generators ----
 
@@ -301,32 +334,55 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_levelup(self) -> pygame.mixer.Sound:
-        """Triumphant ascending arpeggio with shimmer and sparkle."""
+        """Dramatic 6-note level-up fanfare: deep bass thud then soaring arpeggio with sparkle."""
         rate = 22050
-        n = int(rate * 0.7)
+        # Bass thud: 0.2s at 130 Hz then 5 rising notes over 1.3s
+        bass_dur = int(rate * 0.20)
+        main_dur = int(rate * 1.30)
+        n = bass_dur + main_dur
         buf = array.array("h")
-        notes = [523, 659, 784, 1047]
-        note_len = n // len(notes)
-        for i in range(n):
-            t_abs = i / rate
-            pos = i / n
-            note_idx = min(i // note_len, len(notes) - 1)
+
+        # --- bass thud ---
+        for i in range(bass_dur):
+            t = i / rate
+            pos = i / bass_dur
+            env = math.exp(-pos * 8)  # fast decay
+            val = math.sin(2 * math.pi * 130 * t) * 0.55
+            val += math.sin(2 * math.pi * 65 * t) * 0.30   # sub octave
+            val += math.sin(2 * math.pi * 260 * t) * 0.12
+            sample = int(val * env * 32767)
+            buf.append(max(-32768, min(32767, sample)))
+
+        # --- soaring 5-note arpeggio ---
+        notes = [392, 523, 659, 784, 1047]
+        note_dur = main_dur // len(notes)
+        for i in range(main_dur):
+            t_abs = (bass_dur + i) / rate
+            pos = i / main_dur
+            note_idx = min(i // note_dur, len(notes) - 1)
             freq = notes[note_idx]
-            # Crossfade between notes
-            note_pos = (i % note_len) / note_len
-            env = (1.0 - pos ** 1.5) * min(1.0, pos * 8)
-            # Rich tone stack
-            val = math.sin(2 * math.pi * freq * t_abs) * 0.35
-            val += math.sin(2 * math.pi * freq * 2 * t_abs) * 0.15
-            val += math.sin(2 * math.pi * freq * 3 * t_abs) * 0.08
-            # Bell-like attack per note
-            bell = math.sin(2 * math.pi * freq * 4 * t_abs) * 0.06 * max(0, 1 - note_pos * 3)
-            # Sparkle noise
-            if (i % 350) < 40:
+            note_pos = (i % note_dur) / note_dur
+            # Envelope: quick attack, hold, decay at end
+            attack = min(1.0, note_pos * 12)
+            release = 1.0 - max(0.0, (pos - 0.7) * 3.0)
+            env = attack * release
+            # Rich harmonic tone
+            val = math.sin(2 * math.pi * freq * t_abs) * 0.38
+            val += math.sin(2 * math.pi * freq * 2 * t_abs) * 0.18
+            val += math.sin(2 * math.pi * freq * 3 * t_abs) * 0.09
+            val += math.sin(2 * math.pi * freq * 4 * t_abs) * 0.05
+            # Bell pluck at note start
+            bell = math.sin(2 * math.pi * freq * 5 * t_abs) * 0.07 * max(0, 1 - note_pos * 4)
+            # Sparkle noise burst on last two notes
+            if note_idx >= 3 and (i % 280) < 55:
                 noise = (((i * 31 + 17) * 1103515245 + 12345) >> 16) & 0x7FFF
-                bell += (noise / 16384.0 - 1.0) * 0.04
+                bell += (noise / 16384.0 - 1.0) * 0.06
+            # Final note: add major-third harmony
+            if note_idx == len(notes) - 1:
+                val += math.sin(2 * math.pi * (freq * 1.26) * t_abs) * 0.18
             sample = int((val + bell) * env * 32767)
             buf.append(max(-32768, min(32767, sample)))
+
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_dash(self) -> pygame.mixer.Sound:
@@ -395,44 +451,29 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_chicken(self) -> pygame.mixer.Sound:
-        """Squeaky toy reed squeak — 200ms, high-pitched, nasal.
-        Pitch rises fast on squeeze then falls on release, like a real rubber toy.
-        Uses a phase accumulator so all harmonics track the pitch sweep cleanly."""
+        """Rubber duck squeak — pure sine frequency sweep, 140ms.
+        Squeeze pushes pitch UP then air release drops it DOWN fast.
+        Simplest possible synthesis: clean sine + exponential decay."""
         rate = 22050
-        n = int(rate * 0.20)   # 200 ms — squeaky toys are SHORT
+        n = int(rate * 0.14)   # 140 ms
         buf = array.array("h")
-        phase_acc = 0.0
+        phase = 0.0
         for i in range(n):
             pos = i / n
-            # Envelope: snap attack, hold, clean tail
-            if pos < 0.04:
-                env = pos / 0.04
-            elif pos < 0.55:
-                env = 1.0
+            # Envelope: instant on, hold peak, exponential fall
+            env = (1.0 - pos) ** 1.2 * min(1.0, pos * 30)
+            # Pitch: fast rise (squeeze compression), then quick fall (air out)
+            if pos < 0.22:
+                freq = 380.0 + 480.0 * (pos / 0.22)  # 380 → 860 Hz
             else:
-                env = max(0.0, 1.0 - (pos - 0.55) / 0.45)
-            # Pitch: rapid compression rise, brief peak, slower release fall
-            if pos < 0.18:
-                freq = 300.0 + 620.0 * (pos / 0.18)   # 300 → 920 Hz
-            elif pos < 0.50:
-                freq = 920.0 - 90.0 * ((pos - 0.18) / 0.32)   # 920 → 830 Hz plateau
-            else:
-                freq = 830.0 - 580.0 * ((pos - 0.50) / 0.50)  # 830 → 250 Hz
-            phase_acc = (phase_acc + freq / rate) % 1.0
-            # Narrow pulse wave (duty 0.18) — the core nasal squeaky character
-            pulse = 1.0 if phase_acc < 0.18 else -0.22
-            # Harmonics via phase accumulator so they follow the pitch sweep
-            h2 = math.sin(4 * math.pi * phase_acc) * 0.42
-            h3 = math.sin(6 * math.pi * phase_acc) * 0.18
-            h4 = math.sin(8 * math.pi * phase_acc) * 0.07
-            # Hair of air-rush noise for the rubber valve texture
-            noise_raw = (((i * 31337 + 11) * 1103515245 + 12345) >> 16) & 0x7FFF
-            air = (noise_raw / 16384.0 - 1.0) * 0.04
-            sample = int((pulse * 0.36 + h2 + h3 + h4 + air) * env * 0.75 * 32767)
+                freq = 860.0 * ((1.0 - pos) / 0.78) ** 0.7  # 860 → 0 Hz over remainder
+            freq = max(60.0, freq)
+            phase = (phase + freq / rate) % 1.0
+            val = math.sin(2 * math.pi * phase)      # pure sine
+            val += math.sin(2 * math.pi * phase * 2) * 0.30   # one octave harmonic
+            sample = int(val * env * 0.80 * 32767)
             buf.append(max(-32768, min(32767, sample)))
-        snd = pygame.mixer.Sound(buffer=buf)
-        snd.set_volume(0.85)
-        return snd
+        return pygame.mixer.Sound(buffer=buf)
 
     def _make_confetti_boom(self) -> pygame.mixer.Sound:
         """Comical pop-explosion with party horn and sparkle."""
@@ -535,6 +576,61 @@ class SoundManager:
                          math.sin(2 * math.pi * 2093 * t) * 0.06) * c_env
             sample = int((creak + groan + n_val + chime) * env * 32767)
             buf.append(max(-32768, min(32767, sample)))
+        return pygame.mixer.Sound(buffer=buf)
+
+    def _make_chest_fanfare(self) -> pygame.mixer.Sound:
+        """Brass DU-DU-DUHHHHNN boss-chest jackpot fanfare — three punchy hits then a held swell."""
+        rate = 22050
+        buf = array.array("h")
+
+        def brass_hit(freq: float, dur_s: float, amp: float = 0.7) -> list:
+            """Single brass stab at freq for dur_s seconds."""
+            n = int(rate * dur_s)
+            out = []
+            for i in range(n):
+                t = i / rate
+                pos = i / n
+                # Fast attack, quick decay
+                env = min(1.0, pos * 30) * math.exp(-pos * 5)
+                # Saw + harmonics = brass timbre
+                val = (2.0 * (t * freq % 1.0) - 1.0) * 0.35
+                val += math.sin(2 * math.pi * freq * t) * 0.30
+                val += math.sin(2 * math.pi * freq * 2 * t) * 0.18
+                val += math.sin(2 * math.pi * freq * 3 * t) * 0.10
+                val += math.sin(2 * math.pi * freq * 4 * t) * 0.05
+                out.append(int(val * amp * env * 32767))
+            return out
+
+        def brass_swell(freq: float, dur_s: float) -> list:
+            """Sustained brass swell with slight vibrato and reverb tail."""
+            n = int(rate * dur_s)
+            out = []
+            for i in range(n):
+                t = i / rate
+                pos = i / n
+                attack = min(1.0, pos * 10)
+                release = max(0.0, 1.0 - max(0.0, pos - 0.6) / 0.4)
+                env = attack * release
+                vibrato = 1.0 + 0.008 * math.sin(2 * math.pi * 5.5 * t)
+                val = (2.0 * (t * freq * vibrato % 1.0) - 1.0) * 0.28
+                val += math.sin(2 * math.pi * freq * vibrato * t) * 0.32
+                val += math.sin(2 * math.pi * freq * 2 * vibrato * t) * 0.16
+                val += math.sin(2 * math.pi * freq * 3 * vibrato * t) * 0.08
+                # Low sub-bass thump under the swell
+                val += math.sin(2 * math.pi * (freq / 2) * t) * 0.12 * max(0, 1 - pos * 3)
+                out.append(int(val * env * 32767))
+            return out
+
+        # DU (220 Hz) — 0.13s, gap 0.04s
+        # DU (277 Hz) — 0.13s, gap 0.04s
+        # DUHHHHNN (330 Hz) — 0.80s sustained swell
+        gap = [0] * int(rate * 0.04)
+        segments = (brass_hit(220, 0.13) + gap +
+                    brass_hit(277, 0.13) + gap +
+                    brass_hit(330, 0.10) +
+                    brass_swell(330, 0.80))
+        for s in segments:
+            buf.append(max(-32768, min(32767, s)))
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_shield_block(self) -> pygame.mixer.Sound:

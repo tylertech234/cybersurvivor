@@ -241,6 +241,8 @@ class Game:
         self._last_damage_time = 0
         self._last_damage_pct = 0.0
         self._dmg_vig_cache = None   # (bucket, Surface)
+        # Super skill flash
+        self._super_flash_until = 0
         # Kill streak combo feedback
         self._kill_streak = 0
         self._kill_streak_time = 0
@@ -726,8 +728,15 @@ class Game:
         p.energy = 0
         cls = getattr(p, "char_class", "knight")
 
+        # Flash the screen white — makes it feel like a real super
+        self._super_flash_until = now + 250
+        # Brief invincibility so the player can't die in their own super animation
+        p.invincible = True
+        p.invincible_timer = now
+        p.invincible_duration = max(p.invincible_duration, 600)
+
         if cls == "archer":
-            # EMP Charged Shot — explosive arrow toward cursor, massive AoE
+            # STORM BARRAGE — 5 massive explosive arrows spread toward cursor
             mx, my = pygame.mouse.get_pos()
             world_x = mx + self.camera.x
             world_y = my + self.camera.y
@@ -736,44 +745,63 @@ class Game:
             length = math.hypot(dx, dy)
             if length > 0:
                 dx, dy = dx / length, dy / length
-            damage = int(p.damage * p.damage_multiplier * 15)
-            self.player_projectiles.spawn_grenades(
-                p.x, p.y, dx, dy,
-                damage=damage, count=1, speed=18.0, lifetime=900,
-                splash_radius=150,
-            )
-            self.animations.add_screen_shake(10)
+            damage = int(p.damage * p.damage_multiplier * 25)
+            base_angle = math.atan2(dy, dx)
+            for offset in (-0.25, -0.12, 0.0, 0.12, 0.25):
+                a = base_angle + offset
+                self.player_projectiles.spawn_grenades(
+                    p.x, p.y, math.cos(a), math.sin(a),
+                    damage=damage, count=1, speed=20.0, lifetime=1100,
+                    splash_radius=220,
+                )
+            self.animations.add_screen_shake(20)
+            self.sounds.play("boss_roar")
             self.sounds.play("confetti_boom")
-            self.sounds.play("swing")
 
         elif cls == "knight":
-            # Blade Storm Nova — 12 daggers in a full 360° ring
-            damage = int(p.damage * p.damage_multiplier * 4)
-            for i in range(12):
-                angle = math.radians(i * 30)
-                dx = math.cos(angle)
-                dy = math.sin(angle)
+            # BLADE STORM NOVA — 20 daggers in a 360° ring, fast + heavy
+            damage = int(p.damage * p.damage_multiplier * 10)
+            for i in range(20):
+                angle = math.radians(i * 18)
                 self.player_projectiles.spawn_daggers(
-                    p.x, p.y, dx, dy,
-                    damage=damage, count=1, speed=9.0,
-                    lifetime=1200, visual="dagger",
+                    p.x, p.y, math.cos(angle), math.sin(angle),
+                    damage=damage, count=1, speed=14.0,
+                    lifetime=1400, visual="dagger",
                 )
-            self.animations.add_screen_shake(8)
+            # Second ring offset by 9° slightly slower
+            damage2 = int(p.damage * p.damage_multiplier * 6)
+            for i in range(20):
+                angle = math.radians(i * 18 + 9)
+                self.player_projectiles.spawn_daggers(
+                    p.x, p.y, math.cos(angle), math.sin(angle),
+                    damage=damage2, count=1, speed=8.0,
+                    lifetime=1600, visual="dagger",
+                )
+            self.animations.add_screen_shake(22)
+            self.sounds.play("boss_roar")
             self.sounds.play("swing")
 
         elif cls == "jester":
-            # Chaos Eruption — 6 confetti grenades in all directions
-            damage = int(p.damage * p.damage_multiplier * 4)
-            for i in range(6):
-                angle = math.radians(i * 60)
-                dx = math.cos(angle)
-                dy = math.sin(angle)
+            # CHAOS ERUPTION — 12 grenades + rainbow death burst
+            damage = int(p.damage * p.damage_multiplier * 10)
+            for i in range(12):
+                angle = math.radians(i * 30)
                 self.player_projectiles.spawn_grenades(
-                    p.x, p.y, dx, dy,
-                    damage=damage, count=1, speed=6.0, lifetime=700,
-                    splash_radius=90,
+                    p.x, p.y, math.cos(angle), math.sin(angle),
+                    damage=damage, count=1, speed=9.0, lifetime=900,
+                    splash_radius=160,
                 )
-            self.animations.add_screen_shake(12)
+            # Inner ring of faster fast grenades
+            damage2 = int(p.damage * p.damage_multiplier * 6)
+            for i in range(6):
+                angle = math.radians(i * 60 + 15)
+                self.player_projectiles.spawn_grenades(
+                    p.x, p.y, math.cos(angle), math.sin(angle),
+                    damage=damage2, count=1, speed=5.0, lifetime=600,
+                    splash_radius=120,
+                )
+            self.animations.add_screen_shake(25)
+            self.sounds.play("boss_roar")
             self.sounds.play("confetti_boom")
 
     def _apply_chest_rewards(self):
@@ -1748,6 +1776,14 @@ class Game:
                                          border_radius=max(1, 28 - i // 2))
                     self._dmg_vig_cache = (bucket, vig)
                 self.screen.blit(self._dmg_vig_cache[1], (0, 0))
+
+        # ---- Super skill flash ----
+        if now_draw < self._super_flash_until:
+            _sf_age = now_draw - (self._super_flash_until - 250)
+            _sf_alpha = max(0, int(200 * (1.0 - _sf_age / 250)))
+            _sf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            _sf.fill((255, 255, 200, _sf_alpha))
+            self.screen.blit(_sf, (0, 0))
 
         # ---- Kill streak combo text ----
         streak_age = now_draw - self._kill_streak_time

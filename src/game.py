@@ -80,6 +80,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         self.game_over = False
+        self._game_over_start_time = 0
         # Profile — always present; create a local one if none was passed
         self.profile: PlayerProfile = profile or create_profile()
         self.main_menu = MainMenuScreen()
@@ -231,6 +232,7 @@ class Game:
         self._zone_transition_time = 0
         self.combat_font = pygame.font.SysFont("consolas", 18, bold=True)
         self.game_over = False
+        self._game_over_start_time = 0
         self._last_player_pos = (world_cx, world_cy)
         self._step_accumulator = 0.0
 
@@ -536,6 +538,19 @@ class Game:
                         self.run_stats, self.spawner.wave,
                         self.current_zone, self._legacy_points_earned,
                         self.player.level, victory=False)
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    btns = getattr(self.hud, '_gameover_btns', {})
+                    if btns.get('run_summary') and btns['run_summary'].collidepoint(event.pos):
+                        self.run_summary.activate(
+                            self.run_stats, self.spawner.wave,
+                            self.current_zone, self._legacy_points_earned,
+                            self.player.level, victory=False)
+                    elif btns.get('quit_to_menu') and btns['quit_to_menu'].collidepoint(event.pos):
+                        self.game_over = False
+                        self.main_menu.active = True
+                        self.main_menu.settings_open = False
+                    elif btns.get('quit') and btns['quit'].collidepoint(event.pos):
+                        self.running = False
                 continue
 
             # Chest reward screen intercepts input
@@ -1588,6 +1603,7 @@ class Game:
                     self.spawner.wave, self.current_zone,
                     self.player.char_class, victory=False)
                 self.game_over = True
+                self._game_over_start_time = now
 
         # Detect any damage taken this frame for vignette
         if self.player.hp < _frame_start_hp:
@@ -1771,7 +1787,8 @@ class Game:
 
         if self.game_over:
             self.hud.draw_game_over(self.screen, self.spawner.wave, self.player.level,
-                                    self.kills, self._legacy_points_earned)
+                                    self.kills, self._legacy_points_earned,
+                                    game_over_start=self._game_over_start_time)
         elif self._player_dying:
             self._draw_player_death_overlay()
 

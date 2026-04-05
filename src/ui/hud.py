@@ -290,7 +290,7 @@ class HUD:
         surface.blit(self._vig_cache, (0, 0))
 
     def draw_game_over(self, surface: pygame.Surface, wave: int, level: int,
-                       kills: int = 0, legacy_points: int = 0):
+                       kills: int = 0, legacy_points: int = 0, game_over_start: int = 0):
         overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 180))
         surface.blit(overlay, (0, 0))
@@ -305,5 +305,40 @@ class HUD:
             lp = self.font.render(f"+{legacy_points} Legacy Points", True, YELLOW)
             surface.blit(lp, (SCREEN_WIDTH // 2 - lp.get_width() // 2, SCREEN_HEIGHT // 2 + 15))
 
-        hint = self.font.render("Press R for Legacy Shop  |  ESC to quit", True, LIGHT_GRAY)
-        surface.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT // 2 + 55))
+        elapsed = pygame.time.get_ticks() - game_over_start if game_over_start else 0
+        self._gameover_btns = {}
+
+        if elapsed >= 3000:
+            # Draw 3 clickable buttons
+            btn_labels = [("run_summary", "Run Summary"), ("quit_to_menu", "Quit to Menu"), ("quit", "Quit")]
+            btn_w, btn_h = 180, 44
+            gap = 20
+            total_w = len(btn_labels) * btn_w + (len(btn_labels) - 1) * gap
+            start_x = SCREEN_WIDTH // 2 - total_w // 2
+            btn_y = SCREEN_HEIGHT // 2 + 70
+            mouse_pos = pygame.mouse.get_pos()
+            # Fade in over 400ms
+            fade_t = min(1.0, (elapsed - 3000) / 400)
+            btn_alpha = int(255 * fade_t)
+            for i, (key, label) in enumerate(btn_labels):
+                bx = start_x + i * (btn_w + gap)
+                rect = pygame.Rect(bx, btn_y, btn_w, btn_h)
+                self._gameover_btns[key] = rect
+                hovered = rect.collidepoint(mouse_pos)
+                bg_color = (60, 20, 20) if not hovered else (100, 30, 30)
+                border_color = (180, 60, 60) if not hovered else (255, 100, 100)
+                btn_surf = pygame.Surface((btn_w, btn_h), pygame.SRCALPHA)
+                pygame.draw.rect(btn_surf, (*bg_color, btn_alpha), (0, 0, btn_w, btn_h), border_radius=8)
+                pygame.draw.rect(btn_surf, (*border_color, btn_alpha), (0, 0, btn_w, btn_h), 2, border_radius=8)
+                surface.blit(btn_surf, (bx, btn_y))
+                lbl_color = (255, 220, 220) if hovered else (200, 160, 160)
+                lbl_surf = self.font_small.render(label, True, lbl_color)
+                lbl_surf.set_alpha(btn_alpha)
+                surface.blit(lbl_surf, (bx + btn_w // 2 - lbl_surf.get_width() // 2,
+                                        btn_y + btn_h // 2 - lbl_surf.get_height() // 2))
+        else:
+            # Show a brief "..." while waiting
+            wait_t = elapsed / 3000
+            dots = "." * (int(wait_t * 6) % 4)
+            hint = self.font_small.render(dots, True, LIGHT_GRAY)
+            surface.blit(hint, (SCREEN_WIDTH // 2 - hint.get_width() // 2, SCREEN_HEIGHT // 2 + 70))

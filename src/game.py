@@ -1261,9 +1261,16 @@ class Game:
             self.animations.spawn_hit_sparks(
                 self.player.x + self.player.facing_x * 30,
                 self.player.y + self.player.facing_y * 30, count=6)
-        # Drain melee hit log into run stats
+        # Drain melee hit log into run stats + energy-from-damage
+        _dmg_energy = 0
         for _wkey, _wdmg in self.combat.damage_log:
             self.run_stats.record_hit(_wkey, _wdmg)
+            _dmg_energy += _wdmg
+        if _dmg_energy > 0:
+            self.player.energy = min(
+                self.player.max_energy,
+                self.player.energy + _dmg_energy // 8,   # 1 energy per 8 damage
+            )
         self.combat.damage_log.clear()
 
         # Parry: melee attacks deflect enemy projectiles

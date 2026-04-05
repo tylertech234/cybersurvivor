@@ -451,27 +451,63 @@ class SoundManager:
         return pygame.mixer.Sound(buffer=buf)
 
     def _make_chicken(self) -> pygame.mixer.Sound:
-        """Rubber duck squeak — pure sine frequency sweep, 140ms.
-        Squeeze pushes pitch UP then air release drops it DOWN fast.
-        Simplest possible synthesis: clean sine + exponential decay."""
+        """Annoying rubber chicken squeak — FM nasal honk with vibrato tail.
+        1) Sharp nasally SQUEEEAK (FM mod, lots of harmonics, wobbly vibrato)
+        2) Airy wheeze release (pink noise + dying pitch)
+        Total: ~500 ms"""
         rate = 22050
-        n = int(rate * 0.14)   # 140 ms
+        n = int(rate * 0.50)       # 500 ms
         buf = array.array("h")
-        phase = 0.0
+        phase_c  = 0.0             # carrier phase
+        phase_m  = 0.0             # modulator phase
+        phase_n  = 0.0             # nasal resonance phase
         for i in range(n):
             pos = i / n
-            # Envelope: instant on, hold peak, exponential fall
-            env = (1.0 - pos) ** 1.2 * min(1.0, pos * 30)
-            # Pitch: fast rise (squeeze compression), then quick fall (air out)
-            if pos < 0.22:
-                freq = 380.0 + 480.0 * (pos / 0.22)  # 380 → 860 Hz
+            t   = i / rate
+
+            # ── envelope ──────────────────────────────────────────
+            # Fast attack, hold, slow tail
+            attack = min(1.0, pos * 40)
+            if pos < 0.55:
+                release = 1.0
             else:
-                freq = 860.0 * ((1.0 - pos) / 0.78) ** 0.7  # 860 → 0 Hz over remainder
-            freq = max(60.0, freq)
-            phase = (phase + freq / rate) % 1.0
-            val = math.sin(2 * math.pi * phase)      # pure sine
-            val += math.sin(2 * math.pi * phase * 2) * 0.30   # one octave harmonic
-            sample = int(val * env * 0.80 * 32767)
+                release = max(0.0, 1.0 - (pos - 0.55) / 0.45)
+            env = attack * release
+
+            # ── carrier pitch: SQUEEEAK arc ───────────────────────
+            # Rise hard (0→40%): 280 → 900 Hz
+            # Peak wobble (40→65%): 900 Hz + fast vibrato
+            # Fall (65%→end): 900 → 150 Hz
+            if pos < 0.40:
+                c_freq = 280.0 + 1550.0 * (pos / 0.40) ** 1.4
+            elif pos < 0.65:
+                vibrato = 1.0 + 0.06 * math.sin(2 * math.pi * 14 * t)
+                c_freq  = 900.0 * vibrato
+            else:
+                c_freq = 900.0 * ((1.0 - pos) / 0.35) ** 0.6
+            c_freq = max(80.0, c_freq)
+
+            # ── FM modulator: nasal quality ───────────────────────
+            m_freq  = c_freq * 2.1       # slightly off from integer ratio = nasal/honky
+            m_depth = 3.8 * math.sin(2 * math.pi * 7.5 * t) * (1 - pos * 0.5)
+            phase_m = (phase_m + m_freq  / rate) % 1.0
+            phase_c = (phase_c + c_freq  / rate) % 1.0
+
+            # FM carrier
+            fm_val  = math.sin(2 * math.pi * (phase_c + m_depth * math.sin(2 * math.pi * phase_m)))
+
+            # ── Nasal resonance band (band-pass-ish via extra sine) ─
+            phase_n = (phase_n + c_freq * 1.5 / rate) % 1.0
+            nasal   = math.sin(2 * math.pi * phase_n) * 0.45
+
+            # ── Airy wheeze: pink-ish noise in the tail ────────────
+            wheeze = 0.0
+            if pos > 0.55:
+                raw  = (((i * 1103515245 + 12345) >> 16) & 0x7FFF) / 16384.0 - 1.0
+                wheeze = raw * 0.30 * ((pos - 0.55) / 0.45)
+
+            val    = (fm_val * 0.55 + nasal * 0.35 + wheeze) * env
+            sample = int(val * 0.85 * 32767)
             buf.append(max(-32768, min(32767, sample)))
         return pygame.mixer.Sound(buffer=buf)
 
@@ -842,7 +878,7 @@ class SoundManager:
         import pickle
         from src.settings import DATA_DIR
         _cache_dir = os.path.join(DATA_DIR, '.cache')
-        _cache_file = os.path.join(_cache_dir, 'boss_music_v1.pkl')
+        _cache_file = os.path.join(_cache_dir, 'boss_music_v2.pkl')
         if os.path.exists(_cache_file):
             try:
                 with open(_cache_file, 'rb') as _f:
@@ -859,20 +895,21 @@ class SoundManager:
         # WASTELAND BOSS — Military march: heavy saw bass + war drums
         # D minor pentatonic, BPM 168, aggressive and relentless
         # ================================================================
-        bpm_w = 168
+        # Wasteland — tuned down a fifth, slower BPM, less distortion
+        bpm_w = 148
         spb_w = int(rate * 60.0 / bpm_w)
         bars_w = 16
         beats_w = bars_w * 4
-        # D minor riff: D2=73, A2=110, C3=131, D3=147, F3=175, A3=220
-        bass_riff = [73, 73, 110, 73, 131, 73, 147, 110,
-                     73, 110, 131, 147, 110, 73, 73, 110,
-                     147, 147, 131, 110, 73, 73, 110, 131,
-                     73, 147, 110, 73, 131, 147, 110, 73]
-        # Lead arp: D4=294, F4=349, A4=440, C5=523, D5=587
-        lead_riff = [294, 349, 440, 349, 294, 0, 440, 523,
-                     349, 440, 523, 440, 349, 294, 0, 294,
-                     440, 523, 587, 523, 440, 0, 349, 440,
-                     523, 440, 349, 294, 440, 587, 523, 440]
+        # A minor riff (D minor transposed down a fifth): A1=55, E2=82, G2=98, A2=110, C3=131, E3=165
+        bass_riff = [55, 55, 82, 55, 98, 55, 110, 82,
+                     55, 82, 98, 110, 82, 55, 55, 82,
+                     110, 110, 98, 82, 55, 55, 82, 98,
+                     55, 110, 82, 55, 98, 110, 82, 55]
+        # Lead arp down a fifth: A3=220, C4=262, E4=330, G4=392, A4=440
+        lead_riff = [220, 262, 330, 262, 220, 0, 330, 392,
+                     262, 330, 392, 330, 262, 220, 0, 220,
+                     330, 392, 440, 392, 330, 0, 262, 330,
+                     392, 330, 262, 220, 330, 440, 392, 330]
         # Drums: 1=kick, 2=snare, 3=hat, 4=open hat, 0=rest
         drum_w = [1, 3, 2, 3, 1, 3, 2, 4, 1, 3, 2, 3, 1, 2, 1, 2]
         buf_w = array.array("h")
@@ -883,20 +920,21 @@ class SoundManager:
             for i in range(spb_w):
                 t = i / rate
                 pos = i / spb_w
-                # Heavy distorted saw bass
+                # Warm saw bass — lighter distortion
                 bphase = (t * bf) % 1.0
                 bsaw = 2.0 * bphase - 1.0
-                # Add clipping distortion
-                bsaw = max(-0.7, min(0.7, bsaw * 1.6)) / 0.7
-                bass_v = bsaw * 0.14 * (1.0 - pos * 0.1)
+                # Soft clip instead of hard (less harsh)
+                bsaw = math.tanh(bsaw * 1.2) * 0.85
+                bass_v = bsaw * 0.12 * (1.0 - pos * 0.1)
                 # Sub octave
-                sub = math.sin(2 * math.pi * bf * 0.5 * t) * 0.08
-                # Lead: square wave arpeggio, short notes
+                sub = math.sin(2 * math.pi * bf * 0.5 * t) * 0.07
+                # Lead: soft triangle arpeggio
                 lead_v = 0.0
                 if lf > 0 and pos < 0.5:
                     lenv = (1.0 - pos / 0.5) ** 1.2
-                    sq = 1.0 if math.sin(2 * math.pi * lf * t) > 0 else -1.0
-                    lead_v = sq * 0.06 * lenv
+                    ltri_p = (t * lf) % 1.0
+                    ltri = 4.0 * abs(ltri_p - 0.5) - 1.0
+                    lead_v = ltri * 0.05 * lenv
                 # Hard drum hits
                 drum_v = 0.0
                 if dr == 1 and pos < 0.18:
@@ -921,19 +959,20 @@ class SoundManager:
         # CITY BOSS — Cyborg terror: glitchy industrial crush
         # C# minor, BPM 180, electronic dystopia
         # ================================================================
-        bpm_c = 180
+        # City — transposed down a fourth, BPM 160, detuned but less shrill
+        bpm_c = 160
         spb_c = int(rate * 60.0 / bpm_c)
         beats_c = 64
-        # C# minor: C#2=69, G#2=104, B2=123, C#3=138, E3=165, G#3=208
-        cbass = [69, 69, 104, 69, 123, 138, 104, 69,
-                 104, 138, 165, 138, 104, 69, 0, 69,
-                 138, 165, 208, 165, 138, 104, 69, 104,
-                 69, 123, 138, 104, 69, 138, 165, 138]
-        # Glitch lead: C#4=277, E4=330, G#4=415, B4=494, C#5=554
-        clead = [277, 0, 330, 415, 277, 0, 494, 415,
-                 330, 415, 494, 554, 415, 330, 0, 277,
-                 415, 494, 554, 0, 415, 330, 277, 0,
-                 494, 415, 330, 277, 415, 554, 494, 415]
+        # G# minor (C# minor down a fourth): G#1=52, D#2=78, F#2=92, G#2=104, B2=123, D#3=156
+        cbass = [52, 52, 78, 52, 92, 104, 78, 52,
+                 78, 104, 123, 104, 78, 52, 0, 52,
+                 104, 123, 156, 123, 104, 78, 52, 78,
+                 52, 92, 104, 78, 52, 104, 123, 104]
+        # Glitch lead down a fourth: G#3=208, B3=247, D#4=311, F#4=370, G#4=415
+        clead = [208, 0, 247, 311, 208, 0, 370, 311,
+                 247, 311, 370, 415, 311, 247, 0, 208,
+                 311, 370, 415, 0, 311, 247, 208, 0,
+                 370, 311, 247, 208, 311, 415, 370, 311]
         drum_c = [1, 3, 2, 1, 1, 3, 2, 3, 1, 3, 2, 1, 1, 2, 1, 3]
         buf_c = array.array("h")
         for bi in range(beats_c):
@@ -943,24 +982,23 @@ class SoundManager:
             for i in range(spb_c):
                 t = i / rate
                 pos = i / spb_c
-                # Pulsing industrial bass drone
+                # Smooth industrial bass
                 bass_v = 0.0
                 if bf > 0:
-                    # Frequency modulated saw
-                    fm_mod = 1.0 + 0.04 * math.sin(2 * math.pi * 3 * t)
+                    fm_mod = 1.0 + 0.03 * math.sin(2 * math.pi * 3 * t)
                     bphase = (t * bf * fm_mod) % 1.0
-                    bsaw = 2.0 * bphase - 1.0
-                    bass_v = bsaw * 0.12 * (0.85 + 0.15 * (1 - pos))
-                    # Sub
-                    bass_v += math.sin(2 * math.pi * bf * 0.5 * t) * 0.08
-                # Glitch lead: detuned square wave
+                    bsaw = math.tanh((2.0 * bphase - 1.0) * 1.1) * 0.9
+                    bass_v = bsaw * 0.11 * (0.85 + 0.15 * (1 - pos))
+                    bass_v += math.sin(2 * math.pi * bf * 0.5 * t) * 0.07
+                # Glitch lead: detuned triangle (softer than square)
                 lead_v = 0.0
                 if lf > 0 and pos < 0.45:
                     lenv = (1.0 - pos / 0.45) ** 0.8
-                    # Two detuned oscillators
-                    sq1 = 1.0 if math.sin(2 * math.pi * lf * t) > 0 else -1.0
-                    sq2 = 1.0 if math.sin(2 * math.pi * lf * 1.012 * t) > 0 else -1.0
-                    lead_v = (sq1 * 0.04 + sq2 * 0.03) * lenv
+                    lt1_p = (t * lf) % 1.0
+                    lt2_p = (t * lf * 1.010) % 1.0
+                    lt1 = 4.0 * abs(lt1_p - 0.5) - 1.0
+                    lt2 = 4.0 * abs(lt2_p - 0.5) - 1.0
+                    lead_v = (lt1 * 0.035 + lt2 * 0.025) * lenv
                 # Industrial percussion — punchy kick + hard snare + noise clicks
                 drum_v = 0.0
                 if dr == 1 and pos < 0.20:
@@ -988,19 +1026,20 @@ class SoundManager:
         # ABYSS BOSS — Cosmic horror: slow massive bass drops + chaos
         # Tritone/dissonant intervals. BPM 85, ominous and overwhelming.
         # ================================================================
-        bpm_a = 85
+        # Abyss — slower (BPM 72), transposed down an octave for deep rumble
+        bpm_a = 72
         spb_a = int(rate * 60.0 / bpm_a)
         beats_a = 64
-        # Tritone-heavy Phrygian: E1=41, Bb1=58, E2=82, Bb2=117, F#2=92, B1=62
-        abass = [41, 41, 58, 41, 82, 58, 41, 82,
-                 58, 82, 92, 82, 58, 41, 41, 58,
-                 82, 82, 117, 82, 92, 58, 41, 82,
-                 41, 58, 82, 92, 82, 58, 41, 41]
-        # Whistle/choir lead: E4=330, Bb4=466, F#4=370, B3=247, C4=262
-        alead = [330, 0, 466, 0, 370, 0, 330, 0,
-                 247, 0, 262, 466, 330, 0, 0, 0,
-                 466, 0, 370, 0, 330, 247, 0, 466,
-                 370, 0, 330, 0, 247, 466, 330, 0]
+        # Down an octave from original: E0/1=41→21, Bb1→29, E1→41, Bb1→58, F#1→46, B0→31
+        abass = [21, 21, 29, 21, 41, 29, 21, 41,
+                 29, 41, 46, 41, 29, 21, 21, 29,
+                 41, 41, 58, 41, 46, 29, 21, 41,
+                 21, 29, 41, 46, 41, 29, 21, 21]
+        # Lead down an octave: E3=165, Bb3=233, F#3=185, B2=124, C3=131
+        alead = [165, 0, 233, 0, 185, 0, 165, 0,
+                 124, 0, 131, 233, 165, 0, 0, 0,
+                 233, 0, 185, 0, 165, 124, 0, 233,
+                 185, 0, 165, 0, 124, 233, 165, 0]
         drum_a = [1, 0, 0, 2, 0, 0, 1, 0, 2, 0, 1, 0, 0, 2, 0, 1]
         buf_a = array.array("h")
         for bi in range(beats_a):
@@ -1061,6 +1100,14 @@ class SoundManager:
                 _pk.dump(_raw, _f)
         except Exception:
             pass
+        # Clean up old cache version
+        import os as _os2
+        _old = os.path.join(_cache_dir, 'boss_music_v1.pkl')
+        if _os2.path.exists(_old):
+            try:
+                _os2.remove(_old)
+            except Exception:
+                pass
 
     def _generate_zone_music(self):
         """Generate ambient base + combat layers for each zone."""

@@ -75,10 +75,12 @@ def _build_tiers(rows: list[dict], max_per_tier: int = 10) -> tuple[list[dict], 
         pid = row.get("player_id", "")
         if not pid:
             continue
-        rt = row.get("run_time_s") or 0
+        rt = row.get("run_time_s")
         dmg = row.get("damage_dealt") or 0
 
         if _completed_all_zones(row):
+            if rt is None or rt <= 0:
+                continue  # skip champions with missing/invalid runtime
             prev = champ_best.get(pid)
             if prev is None or rt < (prev.get("run_time_s") or float("inf")):
                 champ_best[pid] = row
@@ -146,13 +148,17 @@ class LeaderboardScreen:
         t.start()
 
     def _do_fetch(self) -> None:
-        rows = self._telemetry.fetch_run_analytics(limit=200)
-        if rows is None:
-            rows = []
-        if rows:
-            self._champions, self._contenders = _build_tiers(rows)
+        champ_rows = self._telemetry.fetch_champions(limit=50)
+        cont_rows = self._telemetry.fetch_contenders(limit=50)
+        if champ_rows is None:
+            champ_rows = []
+        if cont_rows is None:
+            cont_rows = []
+        combined = champ_rows + cont_rows
+        if combined:
+            self._champions, self._contenders = _build_tiers(combined)
         self._loading = False
-        if not rows and self._telemetry._enabled:
+        if not combined and self._telemetry._enabled:
             self._error = "No scores yet — be the first!"
         elif not self._telemetry._enabled:
             self._error = "Leaderboard not configured."
@@ -160,7 +166,8 @@ class LeaderboardScreen:
     # ── Drawing ────────────────────────────────────────────────────────────────
 
     def _panel_rect(self) -> pygame.Rect:
-        pw, ph = 860, 620
+        pw = min(860, SCREEN_WIDTH - 40)
+        ph = min(620, SCREEN_HEIGHT - 40)
         return pygame.Rect(
             SCREEN_WIDTH // 2 - pw // 2,
             SCREEN_HEIGHT // 2 - ph // 2,

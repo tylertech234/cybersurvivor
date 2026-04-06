@@ -124,9 +124,11 @@ def analyze(rows: list[dict]) -> None:
                 wpn_names[wkey] = wdata.get("name", wkey)
                 wpn_total_dmg[wkey] += wdata.get("total_damage", wdata.get("damage", 0))
                 wpn_total_hits[wkey] += wdata.get("hits", 0)
-                equip_s = wdata.get("time_equipped_s", wdata.get("time_equipped", 0))
-                if isinstance(equip_s, (int, float)) and equip_s > 1000:
-                    equip_s /= 1000  # was stored as ms
+                equip_s = wdata.get("time_equipped_s", 0)
+                if not equip_s:
+                    # Fall back to legacy key (ms) and convert
+                    equip_ms = wdata.get("time_equipped", 0)
+                    equip_s = equip_ms / 1000 if isinstance(equip_ms, (int, float)) else 0
                 wpn_total_time[wkey] += equip_s
 
     if wpn_picks:

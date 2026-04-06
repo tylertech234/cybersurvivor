@@ -1186,6 +1186,7 @@ class Game:
             pdist = math.hypot(self.player.x - hx, self.player.y - hy)
             if pdist < hr and not self.player.invincible:
                 self.player.hp -= hdmg
+                self.player.last_hit_by = hev.get("type", "hazard")
                 self.run_stats.record_damage_taken(hdmg)
                 self.animations.spawn_hit_sparks(self.player.x, self.player.y)
                 self.sounds.play("hit")
@@ -1209,6 +1210,7 @@ class Game:
                 decay_dmg = 2 + (self.spawner.wave - 7)
                 if now % 1000 < dt:  # Roughly once per second
                     self.player.hp -= decay_dmg
+                    self.player.last_hit_by = "entropic_decay"
                     self.run_stats.record_damage_taken(decay_dmg)
 
         # Play boss roar on boss wave start + switch to boss music

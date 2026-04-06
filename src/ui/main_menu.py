@@ -82,6 +82,7 @@ class MainMenuScreen:
         # Enemy chase parade — player runs across, enemies chase
         self._parade: dict | None = None  # active chase group
         self._parade_done_at = 0  # ms when last group fully exited
+        self._next_parade_at = 0  # ms timestamp for next parade spawn
 
     def handle_event(self, event: pygame.event.Event) -> str | None:
         """Returns 'new_run', 'quit', 'debug_menu', or None."""
@@ -314,19 +315,20 @@ class MainMenuScreen:
             all_xs = [p["player_x"]] + [e["x"] for e in p["enemies"]]
             if d == 1 and min(all_xs) > SCREEN_WIDTH + 80:
                 self._parade = None
-                self._parade_done_at = now
+                self._next_parade_at = now + random.randint(2000, 4000)
             elif d == -1 and max(all_xs) < -80:
                 self._parade = None
-                self._parade_done_at = now
+                self._next_parade_at = now + random.randint(2000, 4000)
             return
 
-        # Wait 2-4s after last group before spawning next
-        if now - self._parade_done_at < random.randint(2000, 4000):
+        # Wait until the pre-rolled spawn time
+        if now < self._next_parade_at:
             return
 
         direction = random.choice((-1, 1))
         speed = random.uniform(2.0, 3.5)
-        y = random.randint(580, 670)
+        # Position parade just above the bottom disclaimer text
+        y = SCREEN_HEIGHT - random.randint(60, 120)
         # Player starts off-screen, enemies trail behind
         player_start = -60 if direction == 1 else SCREEN_WIDTH + 60
         # Pick random player class

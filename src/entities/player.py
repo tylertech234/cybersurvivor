@@ -204,6 +204,7 @@ class Player:
         status_dmg = self.statuses.update(now)
         if status_dmg > 0:
             self.hp = max(0, self.hp - status_dmg)
+            self.last_hit_by = "status_effect"
 
         speed_mult = self.statuses.get_speed_mult()
         # Passive: adrenaline — +30% speed for 3s after kill

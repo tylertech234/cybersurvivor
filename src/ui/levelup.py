@@ -244,13 +244,16 @@ class LevelUpScreen:
 
         # ── Weighted 3-choice selection ──────────────────────────────────────
         # Separate pool into categories for intentional representation.
-        # When passive slots are full: no passive offers (stops swap-screen spam).
+        # When passive slots are full: passives can still appear but at low chance
+        # so the player can swap one in — they just won't dominate all 3 slots.
         stat_pool    = [e for e in pool
                         if e.get("type") == "stat" and e.get("effect") != "passive"]
-        passive_pool = ([] if self._passives_full
-                        else [e for e in pool if e.get("effect") == "passive"])
+        passive_pool = [e for e in pool if e.get("effect") == "passive"]
         weapon_pool  = [e for e in pool
                         if e.get("type") in ("weapon", "weapon_upgrade")]
+
+        # Passive chance: 55% when slots available, 18% when full (rare swap offer)
+        passive_chance = 0.18 if self._passives_full else 0.55
 
         chosen: list[dict] = []
         chosen_ids: set[int] = set()
@@ -271,16 +274,20 @@ class LevelUpScreen:
         else:
             _take(stat_pool) or _take(weapon_pool)
 
-        # Slot 2 — passive if available (55% chance) or stat/weapon otherwise
-        if passive_pool and random.random() < 0.55:
+        # Slot 2 — passive (at passive_chance) or stat/weapon otherwise
+        if passive_pool and random.random() < passive_chance:
             _take(passive_pool) or _take(stat_pool) or _take(weapon_pool)
         else:
             _take(stat_pool) or _take(weapon_pool) or _take(passive_pool)
 
-        # Slot 3 — fill from anything still available (passives excluded when full)
+        # Slot 3 — fill from remaining; when full, only allow a passive if neither
+        # of the first two slots already has one (cap at 1 passive per screen when full)
+        already_has_passive = any(c.get("effect") == "passive" for c in chosen)
         remaining = [e for e in pool
                      if id(e) not in chosen_ids
-                     and (e.get("effect") != "passive" or not self._passives_full)]
+                     and (e.get("effect") != "passive"
+                          or not self._passives_full
+                          or not already_has_passive)]
         if remaining:
             chosen.append(random.choice(remaining))
 

@@ -109,9 +109,11 @@ class CharacterSelectScreen:
             # Description — wrap to fit within card with 20px padding each side
             max_px = card_w - 40
             desc_lines = self._wrap_text_px(cls["desc"], self.font_small, max_px)
+            desc_bottom = card_y + 210
             for j, line in enumerate(desc_lines):
                 d = self.font_small.render(line, True, (180, 180, 180))
-                surface.blit(d, (cx + card_w // 2 - d.get_width() // 2, card_y + 210 + j * 18))
+                surface.blit(d, (cx + card_w // 2 - d.get_width() // 2, desc_bottom + j * 18))
+            desc_bottom += len(desc_lines) * 18
 
             # Starting weapon — knight gets light blue, others use their weapon's blade color
             wpn = WEAPONS[cls["start_weapon"]]
@@ -119,15 +121,16 @@ class CharacterSelectScreen:
                 wpn_color = (120, 200, 255)  # light blue for knight
             else:
                 wpn_color = wpn["blade_color"]
-            wpn_text = self.font_small.render(f"Starter Weapon: {wpn['name']}", True, wpn_color)
-            surface.blit(wpn_text, (cx + card_w // 2 - wpn_text.get_width() // 2, card_y + 262))
+            wpn_y = desc_bottom + 10  # line space after description
+            wpn_text = self.font_small.render(f"Weapon: {wpn['name']}", True, wpn_color)
+            surface.blit(wpn_text, (cx + card_w // 2 - wpn_text.get_width() // 2, wpn_y))
 
-            # Passives
-            py_off = card_y + 288
+            # Passives — centered, with line space after weapon
+            py_off = wpn_y + 28
             for p in cls["passives"]:
                 pname = p.replace("_", " ").title()
-                pt = self.font_small.render(f"• {pname}", True, (150, 200, 150))
-                surface.blit(pt, (cx + 20, py_off))
+                pt = self.font_small.render(f"\u2022 {pname}", True, (150, 200, 150))
+                surface.blit(pt, (cx + card_w // 2 - pt.get_width() // 2, py_off))
                 py_off += 18
 
             # Stats

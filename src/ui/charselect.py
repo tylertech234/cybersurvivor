@@ -115,13 +115,15 @@ class CharacterSelectScreen:
                 surface.blit(d, (cx + card_w // 2 - d.get_width() // 2, desc_bottom + j * 18))
             desc_bottom += len(desc_lines) * 18
 
-            # Starting weapon — knight gets light blue, others use their weapon's blade color
+            # Starting weapon — anchored above stats line
             wpn = WEAPONS[cls["start_weapon"]]
             if cls_key == "knight":
                 wpn_color = (120, 200, 255)  # light blue for knight
             else:
                 wpn_color = wpn["blade_color"]
-            wpn_y = desc_bottom + 10  # line space after description
+            # Fixed position: stats at card_y+card_h-30, passives above, weapon above passives
+            n_passives = len(cls["passives"])
+            wpn_y = card_y + card_h - 30 - 18 * n_passives - 28 - 10
             wpn_text = self.font_small.render(f"Weapon: {wpn['name']}", True, wpn_color)
             surface.blit(wpn_text, (cx + card_w // 2 - wpn_text.get_width() // 2, wpn_y))
 

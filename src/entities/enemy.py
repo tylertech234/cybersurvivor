@@ -1117,7 +1117,7 @@ class Enemy:
             surface.blit(flash_s, (sx - _fw // 2 + shake_x, sy - _fw // 2))
             # Exclamation indicator above head
             if wu_frac > 0.3:
-                warn_font = get_font(20)
+                warn_font = get_font("consolas", 20, bold=True)
                 warn = warn_font.render("!", True, (255, 60, 60))
                 surface.blit(warn, (sx - warn.get_width() // 2, sy - self.size // 2 - 28))
 

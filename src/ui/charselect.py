@@ -23,7 +23,7 @@ class CharacterSelectScreen:
         # Click on a class card
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mx, my = event.pos
-            card_w, card_h, gap = 240, 380, 30
+            card_w, card_h, gap = 260, 380, 24
             total_w = len(self.classes) * card_w + (len(self.classes) - 1) * gap
             start_x = SCREEN_WIDTH // 2 - total_w // 2
             card_y = 100
@@ -65,9 +65,9 @@ class CharacterSelectScreen:
         title = self.font_big.render("CHOOSE YOUR CLASS", True, YELLOW)
         surface.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, 50))
 
-        card_w = 240
+        card_w = 260
         card_h = 380
-        gap = 30
+        gap = 24
         total_w = len(self.classes) * card_w + (len(self.classes) - 1) * gap
         start_x = SCREEN_WIDTH // 2 - total_w // 2
         card_y = 100
@@ -107,14 +107,15 @@ class CharacterSelectScreen:
             surface.blit(name, (cx + card_w // 2 - name.get_width() // 2, card_y + 180))
 
             # Description — wrap within card padding
-            desc_lines = self._wrap_text(cls["desc"], 32)
+            desc_lines = self._wrap_text(cls["desc"], 34)
             for j, line in enumerate(desc_lines):
                 d = self.font_small.render(line, True, (180, 180, 180))
                 surface.blit(d, (cx + card_w // 2 - d.get_width() // 2, card_y + 210 + j * 18))
 
-            # Starting weapon
+            # Starting weapon — use a lightened class color for the label
             wpn = WEAPONS[cls["start_weapon"]]
-            wpn_text = self.font_small.render(f"Weapon: {wpn['name']}", True, wpn["blade_color"])
+            light_color = tuple(min(255, c + 120) for c in cls["color"])
+            wpn_text = self.font_small.render(f"Starter Weapon: {wpn['name']}", True, light_color)
             surface.blit(wpn_text, (cx + card_w // 2 - wpn_text.get_width() // 2, card_y + 262))
 
             # Passives

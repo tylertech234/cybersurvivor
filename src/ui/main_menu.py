@@ -271,15 +271,16 @@ class MainMenuScreen:
     # ── Enemy parade ──────────────────────────────────────────────────────────
 
     def _update_parade(self, now: int) -> None:
-        """Spawn and advance groups of enemy silhouettes across the bottom."""
+        """Spawn and advance groups of enemy silhouettes across the screen."""
         # Spawn new group
         if now >= self._next_parade:
-            self._next_parade = now + random.randint(3000, 7000)
+            self._next_parade = now + random.randint(2000, 5000)
             direction = random.choice((-1, 1))  # -1 = right-to-left
-            count = random.randint(3, 6)
-            speed = random.uniform(1.2, 2.5)
-            y = random.randint(SCREEN_HEIGHT - 100, SCREEN_HEIGHT - 50)
-            start_x = SCREEN_WIDTH + 30 if direction == -1 else -30
+            count = random.randint(3, 7)
+            speed = random.uniform(1.5, 3.0)
+            # Place groups in the open area below the menu items
+            y = random.randint(560, 660)
+            start_x = SCREEN_WIDTH + 40 if direction == -1 else -40
             # Pick a random enemy color/shape
             palette = random.choice([
                 ("rat", (100, 200, 180)),
@@ -292,7 +293,7 @@ class MainMenuScreen:
             group = {
                 "shape": palette[0], "color": palette[1],
                 "dir": direction, "speed": speed, "y": y,
-                "members": [start_x - direction * i * random.randint(18, 30) for i in range(count)],
+                "members": [start_x - direction * i * random.randint(22, 36) for i in range(count)],
             }
             self._parade_groups.append(group)
 
@@ -309,41 +310,43 @@ class MainMenuScreen:
         self._parade_groups = alive
 
     def _draw_parade(self, surface: pygame.Surface, now: int) -> None:
-        """Draw enemy silhouette groups running across the bottom."""
+        """Draw enemy silhouette groups running across the screen."""
         for g in self._parade_groups:
             col = g["color"]
             shape = g["shape"]
             flip = g["dir"] == 1  # face direction of travel
             bob_base = now * 0.008
+            sz = 32  # sprite surface size
             for i, x in enumerate(g["members"]):
                 xi = int(x)
-                yi = g["y"] + int(math.sin(bob_base + i * 0.7) * 2)
-                # Faded silhouette alpha
-                alpha = 50
-                s = pygame.Surface((24, 24), pygame.SRCALPHA)
+                yi = g["y"] + int(math.sin(bob_base + i * 0.7) * 3)
+                alpha = 120
+                s = pygame.Surface((sz, sz), pygame.SRCALPHA)
                 ac = (*col, alpha)
                 if shape == "rat":
-                    pygame.draw.ellipse(s, ac, (4, 8, 16, 8))  # body
-                    pygame.draw.circle(s, ac, (10 if not flip else 14, 9), 4)  # head
+                    pygame.draw.ellipse(s, ac, (4, 10, 22, 12))
+                    hx = 6 if flip else 22
+                    pygame.draw.circle(s, ac, (hx, 12), 6)
                 elif shape == "raccoon":
-                    pygame.draw.ellipse(s, ac, (3, 4, 18, 14))  # stocky body
-                    pygame.draw.circle(s, ac, (11 if not flip else 13, 6), 5)  # head
+                    pygame.draw.ellipse(s, ac, (3, 6, 26, 18))
+                    hx = 6 if flip else 24
+                    pygame.draw.circle(s, ac, (hx, 9), 7)
                 elif shape == "dalek":
-                    pygame.draw.rect(s, ac, (6, 10, 12, 10), border_radius=2)  # skirt
-                    pygame.draw.ellipse(s, ac, (7, 4, 10, 8))  # dome
+                    pygame.draw.rect(s, ac, (6, 14, 20, 14), border_radius=3)
+                    pygame.draw.ellipse(s, ac, (8, 4, 16, 14))
                 elif shape == "zombie":
-                    pygame.draw.rect(s, ac, (8, 6, 8, 14))  # tall body
-                    pygame.draw.circle(s, ac, (12, 5), 5)  # head
+                    pygame.draw.rect(s, ac, (10, 6, 12, 22))
+                    pygame.draw.circle(s, ac, (16, 6), 7)
                 elif shape == "dog":
-                    pygame.draw.ellipse(s, ac, (2, 8, 20, 10))  # long body
-                    pygame.draw.circle(s, ac, (4 if flip else 20, 8), 4)  # head
+                    pygame.draw.ellipse(s, ac, (2, 10, 28, 14))
+                    hx = 4 if flip else 26
+                    pygame.draw.circle(s, ac, (hx, 10), 6)
                 elif shape == "specter":
-                    pygame.draw.ellipse(s, ac, (5, 2, 14, 18))  # floaty form
-                    # Wispy bottom
-                    for wx in range(7, 18, 3):
-                        wy = 18 + int(math.sin(bob_base + wx) * 2)
-                        pygame.draw.line(s, ac, (wx, 16), (wx, wy), 1)
-                surface.blit(s, (xi - 12, yi - 12))
+                    pygame.draw.ellipse(s, ac, (6, 2, 20, 24))
+                    for wx in range(9, 25, 4):
+                        wy = 24 + int(math.sin(bob_base + wx) * 3)
+                        pygame.draw.line(s, ac, (wx, 22), (wx, min(wy, sz - 1)), 2)
+                surface.blit(s, (xi - sz // 2, yi - sz // 2))
 
     def _draw_menu(self, surface: pygame.Surface, now: int):
         # Update and draw enemy parade behind the menu

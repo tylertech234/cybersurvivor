@@ -152,7 +152,9 @@ def fire_player_projectile(player, player_projectiles, sounds):
     if w.get("orbiter"):
         player_projectiles.spawn_orbiter(px, py, fx, fy, dmg, w.get("orbiter_type", "banana"))
     elif w.get("grenade"):
-        player_projectiles.spawn_grenades(px, py, fx, fy, dmg, cnt, spd, lt)
+        splash_r = w.get("splash_radius", 60)
+        gstyle = w.get("proj_style", "confetti")
+        player_projectiles.spawn_grenades(px, py, fx, fy, dmg, cnt, spd, lt, splash_r, gstyle)
     else:
         vis = w.get("proj_visual", "dagger")
         prc = w.get("piercing", False)
@@ -161,5 +163,5 @@ def fire_player_projectile(player, player_projectiles, sounds):
     if "Chicken" in w.get("name", ""):
         sounds.play("chicken")
     else:
-        sounds.play("throw")
+        sounds.play(w.get("sound", "throw"))
     return True

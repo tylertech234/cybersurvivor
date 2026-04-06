@@ -25,7 +25,7 @@ DISPLAY_NAMES: dict[str, str] = {
     "charger":         "Charger",
     "shielder":        "Shielder",
     "spitter":         "Spitter",
-    "iron_sentinel":   "Iron Sentinel",
+    "iron_sentinel":   "D-Lak Sentinel",
     "supreme_d_lek":   "D-Lek Emperor",
     "emperors_elite_guard": "Emperor's Elite Guard",
     # Zone 2

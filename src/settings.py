@@ -80,7 +80,7 @@ PLAYER_MAX_SPEED = 9                # hard cap — prevents melee from feeling w
 PLAYER_MAX_RANGE = 135              # hard cap on attack range
 PLAYER_DASH_SPEED = 18
 PLAYER_DASH_DURATION = 150          # ms
-PLAYER_DASH_COOLDOWN = 800          # ms
+PLAYER_DASH_COOLDOWN = 1000          # ms
 
 # -- Enemies --
 ENEMY_SPEED = 2.8
@@ -127,7 +127,7 @@ PLAYER_LIGHT_RADIUS_MAX = 180       # px – starting personal light radius
 PLAYER_LIGHT_RADIUS_MIN = 50        # px – minimum light radius
 LIGHT_SHRINK_RATE = 0.015           # px lost per frame away from campfire
 LIGHT_RESTORE_RATE = 0.6            # px gained per frame near campfire
-DARKNESS_GROW_RATE = 0.0004         # darkness per frame away from campfire (0→1)
+DARKNESS_GROW_RATE = 0.0002         # darkness per frame away from campfire (0→1)
 DARKNESS_DECAY_RATE = 0.003         # darkness lost per frame near campfire
 
 # -- Backend (Supabase) --
@@ -138,10 +138,10 @@ try:
 except ImportError:
     SUPABASE_URL = ""
     SUPABASE_ANON_KEY = ""
-DARKNESS_MAX = 0.85                 # max darkness alpha (0..1)
-XP_DARKNESS_BONUS = 2.0             # max XP multiplier at full darkness
+DARKNESS_MAX = 0.65                 # max darkness alpha (0..1) — capped at old 2.3x visual level
+XP_DARKNESS_BONUS = 1.54            # at DARKNESS_MAX (0.65) gives exactly 2x XP
 ENEMY_DARKNESS_HP_BONUS = 0.6       # extra HP fraction at full darkness
-ENEMY_DARKNESS_DMG_BONUS = 0.5      # extra damage fraction at full darkness
+ENEMY_DARKNESS_DMG_BONUS = 1.54     # at DARKNESS_MAX (0.65) gives exactly 2x enemy damage
 
 # -- Map --
 TILE_SIZE = 64

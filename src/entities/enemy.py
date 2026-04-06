@@ -1179,10 +1179,6 @@ class Enemy:
             pygame.draw.circle(surface, joint_color, (sx + lx_off, leg_base_y + 4), 3)
             pygame.draw.circle(surface, (60, 50, 40), (sx + lx_off, foot_y), 3)
 
-        # ELITE label
-        label = get_font("consolas", 10, True).render("SUB-BOSS", True, (255, 140, 20))
-        surface.blit(label, (sx - label.get_width() // 2, sy - half - 22))
-
     # ═══════════════════════════════════════════ EMPEROR'S ELITE GUARD drawing
     def _draw_emperors_elite_guard(self, surface, sx, sy, now):
         """Black-armored elite D-Lek guard — obsidian hull with red eye."""
@@ -1390,10 +1386,6 @@ class Enemy:
         eye_ey = int(sy - half + 10 + bob + self.face_y * 5)
         pygame.draw.circle(surface, (255, 80, 0), (eye_ex, eye_ey), 5)
         pygame.draw.circle(surface, (255, 200, 50), (eye_ex, eye_ey), 3)
-
-        # "MINI BOSS" label
-        label = get_font("consolas", 10, True).render("ELITE", True, (255, 200, 50))
-        surface.blit(label, (sx - label.get_width() // 2, sy - half - 22))
 
     # ═══════════════════════════════════════════ BIG BOSS drawing
     def _draw_big_boss(self, surface, sx, sy, now):

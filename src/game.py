@@ -260,6 +260,8 @@ class Game:
         self._dmg_vig_cache = None   # (bucket, Surface)
         # Super energy lockout — blocks energy gain for 4 s after firing
         self._super_energy_lockout_until = 0
+        # Screenshot capture queue — (capture_at_ms, tag) pairs
+        self._pending_auto_shots: list[tuple[int, str]] = []
         # Kill streak combo feedback
         self._kill_streak = 0
         self._kill_streak_time = 0
@@ -620,12 +622,7 @@ class Game:
                             f"Auto-attack {'ON' if self.auto_attack else 'OFF'}")
                 # Screenshot — F9
                 if event.key == pygame.K_F9:
-                    _ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                    _shots_dir = os.path.join(DATA_DIR, "screenshots")
-                    os.makedirs(_shots_dir, exist_ok=True)
-                    _path = os.path.join(_shots_dir, f"screenshot_{_ts}.png")
-                    pygame.image.save(self.screen, _path)
-                    self.toasts.show("Screenshot saved", os.path.basename(_path), (100, 220, 255))
+                    self._save_screenshot("manual")
                 # Attack — Space or Left click proxy via J key
                 if event.key in (pygame.K_SPACE, pygame.K_j) and not self._player_dying and not self.game_over:
                     if self.player.try_attack(now):
@@ -740,6 +737,20 @@ class Game:
             p.upgrade_tiers[base_name] = tier
         elif effect == "skip":
             pass  # player forfeited the upgrade
+
+    # ── Screenshots ──────────────────────────────────────────────────────────
+
+    _SCREENSHOTS_DIR = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "screenshots")
+
+    def _save_screenshot(self, tag: str = "manual"):
+        """Save a PNG of the current frame to <project>/screenshots/."""
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        os.makedirs(self._SCREENSHOTS_DIR, exist_ok=True)
+        path = os.path.join(self._SCREENSHOTS_DIR, f"{ts}_{tag}.png")
+        pygame.image.save(self.screen, path)
+        self.toasts.show("Screenshot", os.path.basename(path), (100, 220, 255))
 
     def _try_add_passive(self, key: str, display_name: str):
         """Add a passive, or open swap screen if slots are full."""
@@ -1198,12 +1209,16 @@ class Game:
         if self.spawner.just_started_wave and self.spawner.boss_wave:
             self.sounds.play("boss_roar")
             self.sounds.start_boss_music(self.current_zone)
+            # Auto-screenshot 400 ms after boss wave starts (effects visible)
+            self._pending_auto_shots.append((now + 400, "boss_spawn"))
 
         # Stop boss music when boss wave ends (no more boss enemies alive)
         if self.sounds.boss_music_playing:
             alive_bosses = [e for e in self.spawner.get_alive_enemies() if e.is_boss]
             if not alive_bosses and not self.spawner.wave_active:
                 self.sounds.stop_boss_music()
+                # Auto-screenshot 500 ms after boss is cleared — capture the victory
+                self._pending_auto_shots.append((now + 500, "boss_cleared"))
 
         # Campfire is active only between waves
         self.campfire.set_active(not self.spawner.wave_active)
@@ -1867,6 +1882,8 @@ class Game:
                 self.player.x, self.player.y, (255, 255, 100), count=24)
             self.animations.add_screen_shake(4)
             self.sounds.play("levelup")
+            # Auto-screenshot 300 ms later to catch the level-up card
+            self._pending_auto_shots.append((now + 300, "levelup"))
 
     def _spawn_healing_drop(self, x: float, y: float, kind: str):
         """Spawn the appropriate healing pickup for a healing prop type."""
@@ -2136,6 +2153,13 @@ class Game:
 
         # ---- Toast notifications ----
         self.toasts.draw(self.screen)
+
+        # ---- Auto-screenshot queue ----
+        if self._pending_auto_shots:
+            for _shot_at, _shot_tag in list(self._pending_auto_shots):
+                if now_draw >= _shot_at:
+                    self._save_screenshot(_shot_tag)
+                    self._pending_auto_shots.remove((_shot_at, _shot_tag))
 
         # ---- Custom cursor (always drawn last) ----
         mx_c, my_c = pygame.mouse.get_pos()

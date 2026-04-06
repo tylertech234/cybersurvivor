@@ -258,8 +258,8 @@ class Game:
         self._last_damage_time = 0
         self._last_damage_pct = 0.0
         self._dmg_vig_cache = None   # (bucket, Surface)
-        # Super skill flash
-        self._super_flash_until = 0
+        # Super energy lockout — blocks energy gain for 4 s after firing
+        self._super_energy_lockout_until = 0
         # Kill streak combo feedback
         self._kill_streak = 0
         self._kill_streak_time = 0
@@ -735,7 +735,7 @@ class Game:
         elif effect == "passive":
             self._try_add_passive(value, choice.get("name", value))
         elif effect == "dash_charges":
-            p.dash_charges_max = min(2, p.dash_charges_max + 1)
+            p.dash_charges_max = min(4, p.dash_charges_max + 1)
             p._dash_charges_remaining = p.dash_charges_max
             p.upgrade_tiers[base_name] = tier
         elif effect == "skip":
@@ -794,8 +794,16 @@ class Game:
         p.energy = 0
         cls = getattr(p, "char_class", "knight")
 
-        # Flash the screen white — makes it feel like a real super
-        self._super_flash_until = now + 450
+        # Yellow burst particles at player — visual pop without blinding flash
+        self.animations.spawn_death_burst(p.x, p.y, (255, 220, 40), count=28)
+        for _ba in range(0, 360, 36):
+            _br = 42
+            self.animations.spawn_death_burst(
+                p.x + _br * math.cos(math.radians(_ba)),
+                p.y + _br * math.sin(math.radians(_ba)),
+                (255, 255, 120), count=5)
+        # Lock energy accumulation for 4 seconds so super can't chain instantly
+        self._super_energy_lockout_until = now + 4000
         # Brief invincibility so the player can't die in their own super animation
         p.invincible = True
         p.invincible_timer = now
@@ -824,7 +832,7 @@ class Game:
                 self.player_projectiles.spawn_grenades(
                     p.x, p.y, math.cos(a), math.sin(a),
                     damage=damage, count=1, speed=22.0, lifetime=1200,
-                    splash_radius=240, style="bolt",
+                    splash_radius=240, style="bolt", is_super=True,
                 )
             # Burst flash at player position
             for _ba in range(0, 360, 45):
@@ -1213,6 +1221,16 @@ class Game:
         alive = self.spawner.get_alive_enemies()
         for enemy in alive:
             enemy.update(dt, now, self.player.x, self.player.y, world_w, world_h)
+            # Architect: shard split at 30% HP
+            if getattr(enemy, '_wants_split', False):
+                enemy._wants_split = False
+                for _ in range(2):
+                    ang = _rng.uniform(0, math.tau)
+                    sd = _rng.uniform(80, 160)
+                    shard = Enemy(enemy.x + math.cos(ang) * sd,
+                                  enemy.y + math.sin(ang) * sd, "rift_walker")
+                    shard.hp = int(shard.max_hp * 1.5)
+                    self.spawner.enemies.append(shard)
             # Environment collision for enemies too
             ehalf = enemy.size // 2
             enemy.x, enemy.y = self.environment.collide_entity(
@@ -1515,7 +1533,7 @@ class Game:
         for _wkey, _wdmg in self.combat.damage_log:
             self.run_stats.record_hit(_wkey, _wdmg)
             _dmg_energy += _wdmg
-        if _dmg_energy > 0:
+        if _dmg_energy > 0 and now > self._super_energy_lockout_until:
             self.player.energy = min(
                 self.player.max_energy,
                 self.player.energy + _dmg_energy // 20,   # 1 energy per 20 damage
@@ -1574,7 +1592,7 @@ class Game:
             self._kill_streak_time = now
 
         # Super energy — 10 per kill, 60 per boss kill
-        if new_kills > 0:
+        if new_kills > 0 and now > self._super_energy_lockout_until:
             self.player.energy = min(
                 self.player.max_energy,
                 self.player.energy + new_kills * 10 + new_boss_kills * 60
@@ -1647,9 +1665,10 @@ class Game:
             if "poison_strikes" in self.player.passives and enemy.alive and _rng.random() < 0.35:
                 enemy.statuses.apply("poison", now)
             # Energy from projectile damage (1 per 20 dmg, no minimum)
-            self.player.energy = min(
-                self.player.max_energy,
-                self.player.energy + dmg // 20)
+            if now > self._super_energy_lockout_until:
+                self.player.energy = min(
+                    self.player.max_energy,
+                    self.player.energy + dmg // 20)
             # Passive: crit_shots — 20% chance double damage on projectile
             if "crit_shots" in self.player.passives and _rng.random() < 0.20:
                 dmg *= 2
@@ -2089,14 +2108,6 @@ class Game:
                                          border_radius=max(1, 28 - i // 2))
                     self._dmg_vig_cache = (bucket, vig)
                 self.screen.blit(self._dmg_vig_cache[1], (0, 0))
-
-        # ---- Super skill flash ----
-        if now_draw < self._super_flash_until:
-            _sf_age = now_draw - (self._super_flash_until - 250)
-            _sf_alpha = max(0, min(255, int(200 * (1.0 - _sf_age / 250))))
-            _sf = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-            _sf.fill((255, 255, 200, _sf_alpha))
-            self.screen.blit(_sf, (0, 0))
 
         # ---- Kill streak combo text ----
         streak_age = now_draw - self._kill_streak_time

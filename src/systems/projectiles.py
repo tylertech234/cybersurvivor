@@ -323,7 +323,8 @@ class ConfettiGrenade:
         (100, 200, 255), (255, 150, 50), (200, 100, 255),
     ]
 
-    def __init__(self, x: float, y: float, dx: float, dy: float, damage: int, style: str = "confetti"):
+    def __init__(self, x: float, y: float, dx: float, dy: float, damage: int, style: str = "confetti",
+                 is_super: bool = False):
         self.x = x
         self.y = y
         self.dx = dx
@@ -338,6 +339,7 @@ class ConfettiGrenade:
         self.splash_radius = 60  # explosion hits enemies in this radius
         self.angle = math.atan2(dy, dx)
         self.style = style
+        self.is_super = is_super
 
     def update(self, now: int):
         if not self.alive:
@@ -363,18 +365,42 @@ class ConfettiGrenade:
             # Glowing energy bolt — bright orange-white core with pulsing halo
             now = pygame.time.get_ticks()
             pulse = 0.7 + 0.3 * math.sin(now * 0.025)
-            halo_r = int(10 * pulse)
-            halo_s = pygame.Surface((halo_r * 2 + 4, halo_r * 2 + 4), pygame.SRCALPHA)
-            pygame.draw.circle(halo_s, (255, 180, 60, 80), (halo_r + 2, halo_r + 2), halo_r)
-            surface.blit(halo_s, (sx - halo_r - 2, sy - halo_r - 2))
-            pygame.draw.circle(surface, (255, 220, 100), (sx, sy), 5)
-            pygame.draw.circle(surface, (255, 255, 220), (sx, sy), 3)
-            # Trailing spark trail in direction of movement
-            trail_x = sx - int(math.cos(self.angle) * 8)
-            trail_y = sy - int(math.sin(self.angle) * 8)
-            ts = pygame.Surface((6, 6), pygame.SRCALPHA)
-            pygame.draw.circle(ts, (255, 140, 40, 140), (3, 3), 3)
-            surface.blit(ts, (trail_x - 3, trail_y - 3))
+            if self.is_super:
+                # Large super bolt: broad yellow aura + electric arc lines
+                halo_r = int((26 + 10 * pulse))
+                halo_s = pygame.Surface((halo_r * 2 + 6, halo_r * 2 + 6), pygame.SRCALPHA)
+                pygame.draw.circle(halo_s, (255, 240, 60, 90), (halo_r + 3, halo_r + 3), halo_r)
+                pygame.draw.circle(halo_s, (255, 200, 20, 50), (halo_r + 3, halo_r + 3), halo_r + 4)
+                surface.blit(halo_s, (sx - halo_r - 3, sy - halo_r - 3))
+                pygame.draw.circle(surface, (255, 230, 60), (sx, sy), 9)
+                pygame.draw.circle(surface, (255, 255, 180), (sx, sy), 5)
+                pygame.draw.circle(surface, (255, 255, 255), (sx, sy), 2)
+                # Electric arc lines radiating outward
+                arc_phase = now * 0.030
+                num_arcs = 6
+                for ai in range(num_arcs):
+                    arc_a = arc_phase + ai * (math.pi * 2 / num_arcs)
+                    arc_len = 18 + int(10 * math.sin(arc_phase * 1.7 + ai))
+                    ex = sx + int(math.cos(arc_a) * arc_len)
+                    ey = sy + int(math.sin(arc_a) * arc_len)
+                    # Zigzag midpoint
+                    mx2 = (sx + ex) // 2 + int(5 * math.sin(arc_phase * 3 + ai))
+                    my2 = (sy + ey) // 2 + int(5 * math.cos(arc_phase * 3 + ai))
+                    pygame.draw.line(surface, (255, 255, 160), (sx, sy), (mx2, my2), 2)
+                    pygame.draw.line(surface, (200, 240, 255), (mx2, my2), (ex, ey), 1)
+            else:
+                halo_r = int(10 * pulse)
+                halo_s = pygame.Surface((halo_r * 2 + 4, halo_r * 2 + 4), pygame.SRCALPHA)
+                pygame.draw.circle(halo_s, (255, 180, 60, 80), (halo_r + 2, halo_r + 2), halo_r)
+                surface.blit(halo_s, (sx - halo_r - 2, sy - halo_r - 2))
+                pygame.draw.circle(surface, (255, 220, 100), (sx, sy), 5)
+                pygame.draw.circle(surface, (255, 255, 220), (sx, sy), 3)
+                # Trailing spark trail in direction of movement
+                trail_x = sx - int(math.cos(self.angle) * 8)
+                trail_y = sy - int(math.sin(self.angle) * 8)
+                ts = pygame.Surface((6, 6), pygame.SRCALPHA)
+                pygame.draw.circle(ts, (255, 140, 40, 140), (3, 3), 3)
+                surface.blit(ts, (trail_x - 3, trail_y - 3))
         else:
             # Round grenade body
             pygame.draw.circle(surface, (80, 80, 80), (sx, sy), 6)
@@ -448,7 +474,8 @@ class PlayerProjectileSystem:
 
     def spawn_grenades(self, x: float, y: float, facing_x: float, facing_y: float,
                        damage: int, count: int = 1, speed: float = 5.5,
-                       lifetime: int = 600, splash_radius: int = 60, style: str = "confetti"):
+                       lifetime: int = 600, splash_radius: int = 60, style: str = "confetti",
+                       is_super: bool = False):
         """Spawn confetti grenades."""
         base_angle = math.atan2(facing_y, facing_x)
         for i in range(count):
@@ -456,7 +483,7 @@ class PlayerProjectileSystem:
             a = base_angle + offset
             dx = math.cos(a)
             dy = math.sin(a)
-            g = ConfettiGrenade(x, y, dx, dy, damage, style=style)
+            g = ConfettiGrenade(x, y, dx, dy, damage, style=style, is_super=is_super)
             g.speed = speed
             g.lifetime = lifetime
             g.splash_radius = splash_radius

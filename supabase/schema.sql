@@ -87,7 +87,10 @@ create policy "leaderboard_insert_anon"
 create policy "leaderboard_update_anon"
     on public.leaderboard for update using (true) with check (true);
 
--- Run analytics: INSERT only — no one reads raw rows via anon key
+-- Run analytics: public SELECT + INSERT (leaderboard UI queries runs directly)
+create policy "analytics_select_all"
+    on public.run_analytics for select using (true);
+
 create policy "analytics_insert_anon"
     on public.run_analytics for insert with check (true);
 
@@ -107,3 +110,6 @@ create index if not exists analytics_player_idx
 
 create index if not exists analytics_wave_idx
     on public.run_analytics (wave desc);
+
+create index if not exists analytics_damage_idx
+    on public.run_analytics (damage_dealt desc);

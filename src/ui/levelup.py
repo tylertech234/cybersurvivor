@@ -242,8 +242,50 @@ class LevelUpScreen:
                     "desc": w["desc"],
                 })
 
-        # Pick 3
-        self.choices = random.sample(pool, min(3, len(pool)))
+        # ── Weighted 3-choice selection ──────────────────────────────────────
+        # Separate pool into categories for intentional representation.
+        # When passive slots are full: no passive offers (stops swap-screen spam).
+        stat_pool    = [e for e in pool
+                        if e.get("type") == "stat" and e.get("effect") != "passive"]
+        passive_pool = ([] if self._passives_full
+                        else [e for e in pool if e.get("effect") == "passive"])
+        weapon_pool  = [e for e in pool
+                        if e.get("type") in ("weapon", "weapon_upgrade")]
+
+        chosen: list[dict] = []
+        chosen_ids: set[int] = set()
+
+        def _take(src: list) -> bool:
+            """Pick a random unused entry from src. Returns True on success."""
+            candidates = [e for e in src if id(e) not in chosen_ids]
+            if not candidates:
+                return False
+            pick = random.choice(candidates)
+            chosen_ids.add(id(pick))
+            chosen.append(pick)
+            return True
+
+        # Slot 1 — weapon upgrade or stat (weapons weighted 60 : 40)
+        if weapon_pool and random.random() < 0.60:
+            _take(weapon_pool) or _take(stat_pool)
+        else:
+            _take(stat_pool) or _take(weapon_pool)
+
+        # Slot 2 — passive if available (55% chance) or stat/weapon otherwise
+        if passive_pool and random.random() < 0.55:
+            _take(passive_pool) or _take(stat_pool) or _take(weapon_pool)
+        else:
+            _take(stat_pool) or _take(weapon_pool) or _take(passive_pool)
+
+        # Slot 3 — fill from anything still available (passives excluded when full)
+        remaining = [e for e in pool
+                     if id(e) not in chosen_ids
+                     and (e.get("effect") != "passive" or not self._passives_full)]
+        if remaining:
+            chosen.append(random.choice(remaining))
+
+        random.shuffle(chosen)
+        self.choices = chosen
 
     def handle_event(self, event: pygame.event.Event) -> dict | None:
         """Returns the chosen upgrade dict, or None if still choosing."""

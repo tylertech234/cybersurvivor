@@ -146,9 +146,8 @@ class Player:
             self.is_dashing = True
             self.dash_timer = now
             self._dash_charges_remaining -= 1
-            # Start the cooldown clock only once all charges are spent
-            if self._dash_charges_remaining == 0:
-                self.last_dash_time = now
+            # Always record the dash time so the per-charge cooldown resets correctly
+            self.last_dash_time = now
             # Dash in movement (WASD) direction, not mouse facing direction
             self.dash_dx = self.move_dx
             self.dash_dy = self.move_dy
@@ -269,10 +268,14 @@ class Player:
         if self.invincible and now - self.invincible_timer > self.invincible_duration:
             self.invincible = False
 
-        # Refill dash charges after cooldown
+        # Refill dash charges after cooldown — one charge at a time
         if (self._dash_charges_remaining < self.dash_charges_max
                 and now - self.last_dash_time >= self.dash_cooldown):
-            self._dash_charges_remaining = self.dash_charges_max
+            self._dash_charges_remaining = min(
+                self.dash_charges_max, self._dash_charges_remaining + 1)
+            # Keep the timer running so subsequent charges each wait a full cooldown
+            if self._dash_charges_remaining < self.dash_charges_max:
+                self.last_dash_time = now
 
     # ---- draw ----
 

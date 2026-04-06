@@ -45,7 +45,7 @@ DARK_GRAY = (40, 40, 40)
 LIGHT_GRAY = (180, 180, 180)
 
 # -- Passives --
-MAX_PASSIVES = 4
+MAX_PASSIVES = 5
 
 # icon letter + color for HUD display  (key → (icon, color))
 PASSIVE_INFO = {

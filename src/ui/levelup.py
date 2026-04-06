@@ -122,7 +122,8 @@ WEAPON_UPGRADES: dict[str, list[dict]] = {
     "jack_in_box": [
         {"name": "Spring Loaded",  "icon": "C", "color": (200, 80, 255),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster spring"},
         {"name": "Pop Goes Boom",  "icon": "D", "color": (180, 60, 220),  "effect": "damage",   "value": 12, "desc": "+12 damage — surprise explosion"},
-    ],    "spud_gun": [
+    ],
+    "spud_gun": [
         {"name": "Starch Rounds",  "icon": "D", "color": (180, 140, 60),  "effect": "damage",   "value": 11, "desc": "+11 damage \u2014 heavyweight potatoes"},
         {"name": "Spud Salvo",     "icon": "C", "color": (160, 120, 50),  "effect": "cooldown", "value": 65, "desc": "-65ms cooldown \u2014 rapid-fire spuds"},
     ],}

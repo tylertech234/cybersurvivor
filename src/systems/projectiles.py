@@ -419,9 +419,6 @@ class ConfettiGrenade:
             surface.blit(ss, (spark_x - 2, spark_y - 2))
 
 
-import random as _rng
-
-
 class PlayerProjectileSystem:
     """Manages player-thrown projectiles (daggers, orbiters, grenades)."""
 
@@ -476,7 +473,8 @@ class PlayerProjectileSystem:
                        damage: int, count: int = 1, speed: float = 5.5,
                        lifetime: int = 600, splash_radius: int = 60, style: str = "confetti",
                        is_super: bool = False):
-        """Spawn confetti grenades."""
+        """Spawn thrown projectiles that explode on impact or timeout.
+        style='confetti' for jester grenades, style='bolt' for energy bolts."""
         base_angle = math.atan2(facing_y, facing_x)
         for i in range(count):
             offset = (i - (count - 1) / 2) * 0.2

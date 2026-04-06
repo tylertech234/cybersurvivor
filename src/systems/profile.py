@@ -30,7 +30,7 @@ _ROOT_POINTER = os.path.join(_USER_DATA_DIR, "profile.json")
 
 # The directory that old versions of the game (pre-AppData migration) wrote
 # saves into — the project/install root, i.e. the folder containing src/.
-_LEGACY_INSTALL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_LEGACY_INSTALL_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # ── Storage backends ───────────────────────────────────────────────────────────

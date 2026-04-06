@@ -160,7 +160,6 @@ class StatusManager:
             color = e.defn["color"]
             if e.key == "fire":
                 # Animated orange flames rising around enemy
-                elapsed_ratio = min(1.0, (now - e.start_time) / e.defn["duration"])
                 for i in range(5):
                     phase = now * 0.018 + i * 1.26
                     column_x = cx + int(math.cos(phase * 0.7) * size * 0.45)

@@ -26,6 +26,11 @@ _CLASS_LABELS = {
 }
 _RANK_COLORS = {1: (255, 215, 0), 2: (192, 192, 192), 3: (205, 127, 50)}
 _ALL_ZONES = {"wasteland", "city", "abyss"}
+_ZONE_LABELS = {
+    "wasteland": "Wastes",
+    "city": "City",
+    "abyss": "Abyss",
+}
 
 
 def _fmt_time(seconds: float | None) -> str:
@@ -36,6 +41,11 @@ def _fmt_time(seconds: float | None) -> str:
     if s >= 3600:
         return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
     return f"{s // 60}:{s % 60:02d}"
+
+
+def _zone_label(row: dict) -> str:
+    z = row.get("zone", "")
+    return _ZONE_LABELS.get(z, z.capitalize() if z else "?")
 
 
 def _fmt_damage(dmg: int) -> str:
@@ -209,7 +219,8 @@ class LeaderboardScreen:
         if self._champions:
             y = self._draw_section(screen, panel, y,
                                    "CHAMPIONS  —  All Zones Cleared  —  Fastest Time",
-                                   (255, 215, 80), self._champions, sort_key="time")
+                                   (255, 215, 80), self._champions, sort_key="time",
+                                   medals=True)
             y += 8
 
         if self._contenders:
@@ -223,7 +234,7 @@ class LeaderboardScreen:
 
     def _draw_section(self, screen: pygame.Surface, panel: pygame.Rect,
                       y: int, label: str, label_color: tuple,
-                      rows: list[dict], sort_key: str) -> int:
+                      rows: list[dict], sort_key: str, medals: bool = False) -> int:
         # Section header
         lbl = self._font_section.render(label, True, label_color)
         screen.blit(lbl, lbl.get_rect(center=(panel.centerx, y)))
@@ -231,7 +242,7 @@ class LeaderboardScreen:
 
         # Column headers
         col_x = self._col_positions(panel)
-        headers = ["#", "Name", "Class", "Wave", "Kills", "Damage", "Time", "Date"]
+        headers = ["#", "Name", "Class", "Zone", "Wave", "Kills", "Damage", "Time"]
 
         for x, h in zip(col_x, headers):
             surf = self._font_head.render(h, True, (120, 150, 200))
@@ -262,17 +273,24 @@ class LeaderboardScreen:
 
             rt = row.get("run_time_s")
             dmg = row.get("damage_dealt") or 0
-            created = str(row.get("created_at", ""))[:10]
+
+            # Draw medal circle for top 3 in champion sections
+            if medals and rank <= 3:
+                medal_col = _RANK_COLORS[rank]
+                mx = col_x[0] + 4
+                my = y + row_h // 2
+                pygame.draw.circle(screen, medal_col, (mx, my), 5)
+                pygame.draw.circle(screen, (0, 0, 0), (mx, my), 5, 1)
 
             cells = [
                 (f"{rank}", rank_col),
                 (str(row.get("display_name", "???"))[:16], name_col),
                 (_CLASS_LABELS.get(char, char.capitalize()), class_col),
+                (_zone_label(row), val_col),
                 (str(row.get("wave", 0)), val_col),
                 (str(row.get("kills", 0)), val_col),
                 (_fmt_damage(dmg), (255, 180, 80) if sort_key == "damage" else val_col),
                 (_fmt_time(rt), (80, 255, 160) if sort_key == "time" else val_col),
-                (created, (100, 120, 140)),
             ]
             for x, (text, col) in zip(col_x, cells):
                 surf = self._font_row.render(text, True, col)
@@ -283,4 +301,4 @@ class LeaderboardScreen:
 
     def _col_positions(self, panel: pygame.Rect) -> list[int]:
         l = panel.left
-        return [l + 22, l + 58, l + 260, l + 370, l + 440, l + 520, l + 640, l + 740]
+        return [l + 22, l + 52, l + 210, l + 330, l + 398, l + 458, l + 538, l + 660]

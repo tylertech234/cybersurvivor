@@ -119,7 +119,7 @@ class TelemetryClient:
         url = (
             f"{self._url}/rest/v1/run_analytics"
             f"?select=player_id,display_name,char_class,platform,"
-            f"wave,level,kills,damage_dealt,run_time_s,"
+            f"zone,wave,level,kills,damage_dealt,run_time_s,"
             f"zones_completed,victory,killed_by,created_at"
             f"&victory=eq.true&run_time_s=not.is.null"
             f"&order=run_time_s.asc&limit={limit}"
@@ -139,7 +139,7 @@ class TelemetryClient:
         url = (
             f"{self._url}/rest/v1/run_analytics"
             f"?select=player_id,display_name,char_class,platform,"
-            f"wave,level,kills,damage_dealt,run_time_s,"
+            f"zone,wave,level,kills,damage_dealt,run_time_s,"
             f"zones_completed,victory,killed_by,created_at"
             f"&order=damage_dealt.desc.nullslast&limit={limit}"
         )

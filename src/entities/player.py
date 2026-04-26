@@ -97,6 +97,7 @@ class Player:
         self._adrenaline_until = 0
         self._shield_matrix_last = -10000  # ready immediately
         self.legacy_dr = 0.0  # legacy damage reduction bonus
+        self.second_wind_used = False
 
         # Vision debuff (from Nexus boss)
         self.vision_debuff_until = 0
@@ -171,15 +172,30 @@ class Player:
     def damage_multiplier(self) -> float:
         """Extra damage multiplier from passives (e.g. berserker)."""
         mult = 1.0
-        if "berserker" in self.passives and self.hp < self.max_hp * 0.3:
-            mult *= 1.5
+        if "berserker" in self.passives:
+            hp_frac = self.hp / self.max_hp if self.max_hp > 0 else 0.0
+            if hp_frac < 0.3:
+                mult *= 1.5
+            elif hp_frac < 1.0:
+                bonus = 0.5 * (1.0 - hp_frac) / 0.7
+                mult *= 1.0 + min(0.5, bonus)
         return mult
+
+    def try_second_wind(self, now: int) -> bool:
+        """Revive once at 30% HP when lethal damage would kill the player."""
+        if "second_wind" in self.passives and not self.second_wind_used and self.hp <= 0:
+            self.second_wind_used = True
+            self.hp = max(1, int(self.max_hp * 0.3))
+            self.invincible = True
+            self.invincible_timer = now
+            return True
+        return False
 
     def take_damage(self, amount: int, now: int):
         if self.invincible:
             return
-        # Passive: shield_matrix — absorb one hit every 10s
-        if "shield_matrix" in self.passives and now - self._shield_matrix_last >= 10000:
+        # Passive: shield_matrix — absorb one hit every 5s
+        if "shield_matrix" in self.passives and now - self._shield_matrix_last >= 5000:
             self._shield_matrix_last = now
             return
         # Passive: evasion — 20% dodge chance
@@ -194,6 +210,8 @@ class Player:
         # Global incoming damage multiplier — hits land harder for more exciting play
         amount = int(amount * 1.45)
         self.hp = max(0, self.hp - amount)
+        if self.try_second_wind(now):
+            return
         self.invincible = True
         self.invincible_timer = now
 
@@ -204,7 +222,10 @@ class Player:
         status_dmg = self.statuses.update(now)
         if status_dmg > 0:
             self.hp = max(0, self.hp - status_dmg)
-            self.last_hit_by = "status_effect"
+            if self.try_second_wind(now):
+                self.last_hit_by = "status_effect"
+            else:
+                self.last_hit_by = "status_effect"
 
         speed_mult = self.statuses.get_speed_mult()
         # Passive: adrenaline — +30% speed for 3s after kill

@@ -284,7 +284,6 @@ class Game:
         self._portal_bg: pygame.Surface | None = None
         # Passive timers
         self._nano_regen_timer = 0
-        self._second_wind_used = False
         self._legacy_points_earned = 0
 
         # Level-up fanfare state
@@ -1017,6 +1016,15 @@ class Game:
         for i in range(1, burst_count):
             self._burst_queue.append((now + i * delay, fx, fy))
 
+    def _cancel_upgrade_overlays(self) -> None:
+        """Close upgrade/reward overlays so death can resolve normally."""
+        self.levelup_screen.active = False
+        self.chest_reward.active = False
+        self.passive_swap.active = False
+        self.weapon_swap.active = False
+        self.arsenal_screen.active = False
+        self._levelup_fanfare_time = 0
+
     def _record_kill_compendium(self, enemy) -> None:
         """Record enemy kill; show toast on first encounter."""
         if self.compendium.on_kill(enemy.enemy_type, self.spawner.wave):
@@ -1071,6 +1079,13 @@ class Game:
                                          arsenal=self.player.arsenal)
             log.info("Level-up screen activated, choices=%s",
                      [c.get('name','?') for c in self.levelup_screen.choices])
+
+        # If the player died while an upgrade/reward overlay was open,
+        # close it and process death immediately instead of waiting.
+        if self.player.hp <= 0 and (self.levelup_screen.active or self.chest_reward.active
+                or self.passive_swap.active or self.weapon_swap.active
+                or self.arsenal_screen.active or self._levelup_fanfare_time):
+            self._cancel_upgrade_overlays()
 
         # Pause gameplay during level-up, chest reward, passive swap, or fanfare
         if (self.levelup_screen.active or self.chest_reward.active
@@ -1908,12 +1923,7 @@ class Game:
                      self.current_zone, self.spawner.wave)
 
         if self.player.hp <= 0:
-            # Passive: second_wind — revive once at 30% HP
-            if "second_wind" in self.player.passives and not self._second_wind_used:
-                self._second_wind_used = True
-                self.player.hp = max(1, int(self.player.max_hp * 0.3))
-                self.player.invincible = True
-                self.player.invincible_timer = now
+            if self.player.try_second_wind(now):
                 self.animations.add_screen_shake(6)
                 self.sounds.play("levelup")
                 log.info("Second Wind activated! HP restored to %d", self.player.hp)

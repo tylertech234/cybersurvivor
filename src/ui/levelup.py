@@ -10,7 +10,7 @@ LEVEL_UPGRADES = [
     # Stat upgrades
     {"name": "Iron Skin",       "icon": "H", "color": (180, 180, 200), "effect": "max_hp",       "value": 25,  "desc": "+25 Max HP and instant heal"},
     {"name": "Power Surge",     "icon": "D", "color": (255, 80, 60),   "effect": "damage",       "value": 8,   "desc": "+8 base damage"},
-    {"name": "Quick Trigger",   "icon": "C", "color": (180, 140, 255), "effect": "cooldown",     "value": 60,  "desc": "-60ms attack cooldown"},
+    {"name": "Quick Trigger",   "icon": "C", "color": (180, 140, 255), "effect": "cooldown",     "value": 50,  "desc": "-50ms attack cooldown"},
     {"name": "Full Repair",     "icon": "+", "color": (50, 220, 50),   "effect": "heal",         "value": 0,   "desc": "Restore all HP"},
     {"name": "Leg Servos",      "icon": "S", "color": (80, 180, 255),  "effect": "speed",        "value": 0.5, "desc": "+0.5 movement speed"},
     # Risky / high-impact
@@ -21,8 +21,8 @@ LEVEL_UPGRADES = [
     {"name": "Thorns",          "icon": "T", "color": (180, 100, 50),  "effect": "passive", "value": "thorns",          "desc": "Reflect 75% melee damage taken back at attacker"},
     {"name": "Second Wind",     "icon": "L", "color": (255, 100, 100), "effect": "passive", "value": "second_wind",     "desc": "Revive once at 30% HP on death"},
     {"name": "Nano Regen",      "icon": "N", "color": (100, 255, 100), "effect": "passive", "value": "nano_regen",      "desc": "Regenerate 1 HP every 2 seconds"},
-    {"name": "Berserker",       "icon": "B", "color": (255, 60, 60),   "effect": "passive", "value": "berserker",       "desc": "+50% damage when below 30% HP"},
-    {"name": "Shield Matrix",   "icon": "M", "color": (100, 150, 255), "effect": "passive", "value": "shield_matrix",   "desc": "Block one hit every 10 seconds"},
+    {"name": "Berserker",       "icon": "B", "color": (255, 60, 60),   "effect": "passive", "value": "berserker",       "desc": "Damage increases up to +50% as HP drops, capped at 30% HP"},
+    {"name": "Shield Matrix",   "icon": "M", "color": (100, 150, 255), "effect": "passive", "value": "shield_matrix",   "desc": "Block one hit every 5 seconds"},
     {"name": "Explosive Kills", "icon": "E", "color": (255, 150, 0),   "effect": "passive", "value": "explosive_kills", "desc": "25% chance for enemies to explode on death"},
     {"name": "Magnetic Field",  "icon": "F", "color": (150, 150, 255), "effect": "passive", "value": "magnetic_field",  "desc": "ALL pickups fly to you from much further away"},
     {"name": "Adrenaline Rush", "icon": "A", "color": (0, 255, 100),   "effect": "passive", "value": "adrenaline",      "desc": "+30% speed for 3s after each kill"},
@@ -42,7 +42,7 @@ WEAPON_UPGRADES: dict[str, list[dict]] = {
     # Knight weapons
     "sword": [
         {"name": "Flame Slash",    "icon": "D", "color": (255, 120, 30),  "effect": "damage",   "value": 12, "desc": "+12 damage — burning sword strikes"},
-        {"name": "Strike Tempo",   "icon": "C", "color": (255, 180, 80),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster swing rhythm"},
+        {"name": "Strike Tempo",   "icon": "C", "color": (255, 180, 80),  "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — faster swing rhythm"},
     ],
     "battle_axe": [
         {"name": "Cleaving Arc",   "icon": "R", "color": (200, 80, 50),   "effect": "range",    "value": 18, "desc": "+18 range — wider axe arc"},
@@ -54,7 +54,7 @@ WEAPON_UPGRADES: dict[str, list[dict]] = {
     ],
 
     "plasma_blade": [
-        {"name": "Plasma Overcharge","icon":"C", "color": (0, 255, 200),  "effect": "cooldown", "value": 80, "desc": "-80ms cooldown — rapid plasma cuts"},
+        {"name": "Plasma Overcharge","icon":"C", "color": (0, 255, 200),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — rapid plasma cuts"},
         {"name": "Thermal Edge",   "icon": "D", "color": (0, 200, 255),   "effect": "damage",   "value": 12, "desc": "+12 damage — superheated edge"},
     ],
     "gravity_maul": [
@@ -63,7 +63,7 @@ WEAPON_UPGRADES: dict[str, list[dict]] = {
     ],
     "blade_barrier": [
         {"name": "Razor Vortex",   "icon": "R", "color": (255, 100, 100), "effect": "range",    "value": 20, "desc": "+20 range — spinning blade reach"},
-        {"name": "Barrier Storm",  "icon": "C", "color": (255, 80, 80),   "effect": "cooldown", "value": 65, "desc": "-65ms cooldown — faster orbit cycle"},
+        {"name": "Barrier Storm",  "icon": "C", "color": (255, 80, 80),   "effect": "cooldown", "value": 55, "desc": "-55ms cooldown — faster orbit cycle"},
     ],
     "shield_bash": [
         {"name": "Fortified Bash", "icon": "H", "color": (100, 160, 255), "effect": "max_hp",   "value": 35, "desc": "+35 Max HP — shield reinforcement"},
@@ -72,10 +72,10 @@ WEAPON_UPGRADES: dict[str, list[dict]] = {
     # Archer weapons
     "dagger": [
         {"name": "Poison Tips",    "icon": "D", "color": (80, 220, 80),   "effect": "damage",   "value": 9,  "desc": "+9 damage — venomous strikes"},
-        {"name": "Rapid Release",  "icon": "C", "color": (60, 200, 60),   "effect": "cooldown", "value": 65, "desc": "-65ms cooldown — faster throw cycle"},
+        {"name": "Rapid Release",  "icon": "C", "color": (60, 200, 60),   "effect": "cooldown", "value": 55, "desc": "-55ms cooldown — faster throw cycle"},
     ],
     "cyber_bow": [
-        {"name": "Rapid Volley",   "icon": "C", "color": (100, 200, 255), "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster draw"},
+        {"name": "Rapid Volley",   "icon": "C", "color": (100, 200, 255), "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — faster draw"},
         {"name": "Piercing Light", "icon": "D", "color": (80, 220, 255),  "effect": "damage",   "value": 12, "desc": "+12 damage — laser-sharp arrow"},
     ],
     "pulse_rifle": [
@@ -88,44 +88,44 @@ WEAPON_UPGRADES: dict[str, list[dict]] = {
     ],
     "ricochet_disc": [
         {"name": "Multi-Bounce",   "icon": "D", "color": (255, 160, 0),   "effect": "damage",   "value": 11, "desc": "+11 damage — extra ricochet hits"},
-        {"name": "Gyro Spin",      "icon": "C", "color": (220, 140, 0),   "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster disc cycle"},
+        {"name": "Gyro Spin",      "icon": "C", "color": (220, 140, 0),   "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — faster disc cycle"},
     ],
     "explosive_crossbow": [
         {"name": "Warhead Tips",   "icon": "D", "color": (255, 120, 30),  "effect": "damage",   "value": 14, "desc": "+14 damage — bigger detonation"},
-        {"name": "Short Fuse",     "icon": "C", "color": (220, 100, 20),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — primed and ready"},
+        {"name": "Short Fuse",     "icon": "C", "color": (220, 100, 20),  "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — primed and ready"},
     ],
     "burst_crossbow": [
-        {"name": "Rapid Chamber",  "icon": "C", "color": (100, 220, 255), "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster burst cycle"},
+        {"name": "Rapid Chamber",  "icon": "C", "color": (100, 220, 255), "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — faster burst cycle"},
         {"name": "Burst Cluster",  "icon": "D", "color": (80, 200, 255),  "effect": "damage",   "value": 10, "desc": "+10 damage — tighter burst cluster"},
     ],
     # Jester weapons
     "rubber_chicken": [
         {"name": "Extra Bouncy",   "icon": "D", "color": (255, 220, 50),  "effect": "damage",   "value": 10, "desc": "+10 damage — bouncier chicken"},
-        {"name": "Turbo Cluck",    "icon": "C", "color": (220, 200, 40),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — rapid clucking"},
+        {"name": "Turbo Cluck",    "icon": "C", "color": (220, 200, 40),  "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — rapid clucking"},
     ],
     "banana_rang": [
         {"name": "Banana Split",   "icon": "R", "color": (255, 255, 80),  "effect": "range",    "value": 18, "desc": "+18 range — wider banana arc"},
-        {"name": "Peel Out",       "icon": "C", "color": (220, 220, 60),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster peel cycle"},
+        {"name": "Peel Out",       "icon": "C", "color": (220, 220, 60),  "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — faster peel cycle"},
     ],
     "joy_buzzer": [
-        {"name": "Megavolt Buzz",  "icon": "C", "color": (255, 255, 0),   "effect": "cooldown", "value": 80, "desc": "-80ms cooldown — rapid buzzing"},
+        {"name": "Megavolt Buzz",  "icon": "C", "color": (255, 255, 0),   "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — rapid buzzing"},
         {"name": "Chain Shock",    "icon": "D", "color": (220, 220, 0),   "effect": "damage",   "value": 11, "desc": "+11 damage — arcing shock damage"},
     ],
     "pie_launcher": [
         {"name": "Cream Explosion","icon": "D", "color": (255, 180, 200), "effect": "damage",   "value": 13, "desc": "+13 damage — bigger pie splash"},
-        {"name": "Rapid Reload",   "icon": "C", "color": (220, 150, 180), "effect": "cooldown", "value": 75, "desc": "-75ms cooldown — pre-loaded pies"},
+        {"name": "Rapid Reload",   "icon": "C", "color": (220, 150, 180), "effect": "cooldown", "value": 65, "desc": "-65ms cooldown — pre-loaded pies"},
     ],
     "confetti_grenade": [
         {"name": "Party Bomb",     "icon": "D", "color": (255, 100, 255), "effect": "damage",   "value": 14, "desc": "+14 damage — explosive confetti boom"},
-        {"name": "Rapid Fire",     "icon": "C", "color": (220, 80, 220),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — party non-stop"},
+        {"name": "Rapid Fire",     "icon": "C", "color": (220, 80, 220),  "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — party non-stop"},
     ],
     "jack_in_box": [
-        {"name": "Spring Loaded",  "icon": "C", "color": (200, 80, 255),  "effect": "cooldown", "value": 70, "desc": "-70ms cooldown — faster spring"},
+        {"name": "Spring Loaded",  "icon": "C", "color": (200, 80, 255),  "effect": "cooldown", "value": 60, "desc": "-60ms cooldown — faster spring"},
         {"name": "Pop Goes Boom",  "icon": "D", "color": (180, 60, 220),  "effect": "damage",   "value": 12, "desc": "+12 damage — surprise explosion"},
     ],
     "spud_gun": [
         {"name": "Starch Rounds",  "icon": "D", "color": (180, 140, 60),  "effect": "damage",   "value": 11, "desc": "+11 damage \u2014 heavyweight potatoes"},
-        {"name": "Spud Salvo",     "icon": "C", "color": (160, 120, 50),  "effect": "cooldown", "value": 65, "desc": "-65ms cooldown \u2014 rapid-fire spuds"},
+        {"name": "Spud Salvo",     "icon": "C", "color": (160, 120, 50),  "effect": "cooldown", "value": 55, "desc": "-55ms cooldown — rapid-fire spuds"},
     ],}
 
 

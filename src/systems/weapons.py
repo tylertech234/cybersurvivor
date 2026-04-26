@@ -58,7 +58,7 @@ WEAPONS = {
     },
     "gravity_maul": {
         "name": "Gravity Maul",
-        "damage_mult": 3.5,
+        "damage_mult": 3.0,
         "range": 60,
         "cooldown": 1000,
         "duration": 450,
@@ -70,7 +70,7 @@ WEAPONS = {
     },
     "blade_barrier": {
         "name": "Blade Barrier",
-        "damage_mult": 0.7,
+        "damage_mult": 1.0,
         "range": 50,
         "cooldown": 400,
         "duration": 150,
@@ -240,7 +240,7 @@ WEAPONS = {
     },
     "banana_rang": {
         "name": "Banana-Rang",
-        "damage_mult": 0.9,
+        "damage_mult": 1.0,
         "range": 45,
         "cooldown": 450,
         "duration": 150,
@@ -302,7 +302,7 @@ WEAPONS = {
     },
     "jack_in_box": {
         "name": "Jack-in-the-Box",
-        "damage_mult": 0.8,
+        "damage_mult": 1.0,
         "range": 45,
         "cooldown": 450,
         "duration": 160,
